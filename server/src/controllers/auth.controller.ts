@@ -33,7 +33,7 @@ export const register = async (
 
   res.status(201).json({
     success: true,
-    message: 'ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø­Ø³Ø§Ø¨ Ø¨Ù†Ø¬Ø§Ø­',
+    message: 'تم إنشاء الحساب بنجاح',
     data: { ...result, welcomePoints: 100 },
   });
 };
@@ -46,7 +46,7 @@ export const login = async (
 
   res.status(200).json({
     success: true,
-    message: 'ØªÙ… ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ø¨Ù†Ø¬Ø§Ø­',
+    message: 'تم تسجيل الدخول بنجاح',
     data: result,
   });
 };
@@ -107,14 +107,14 @@ const GITHUB_STATE_COOKIE = 'mabdeen_github_oauth_state';
 const GITHUB_STATE_COOKIE_PATH = '/api/auth/github/callback';
 
 const googleClientId = (): string => {
-  if (!env.GOOGLE_CLIENT_ID) throw new AppError('ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ø¨Ø§Ø³ØªØ®Ø¯Ø§Ù… Google ØºÙŠØ± Ù…Ù‡ÙŠØ£ Ø¹Ù„Ù‰ Ù‡Ø°Ø§ Ø§Ù„Ø®Ø§Ø¯Ù…', 503);
+  if (!env.GOOGLE_CLIENT_ID) throw new AppError('تسجيل الدخول باستخدام Google غير مهيأ على هذا الخادم', 503);
   return env.GOOGLE_CLIENT_ID;
 };
 
 const googleConfig = () => {
   const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL } = env;
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_CALLBACK_URL) {
-    throw new AppError('ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ø¨Ø§Ø³ØªØ®Ø¯Ø§Ù… Google ØºÙŠØ± Ù…Ù‡ÙŠØ£ Ø¹Ù„Ù‰ Ù‡Ø°Ø§ Ø§Ù„Ø®Ø§Ø¯Ù…', 503);
+    throw new AppError('تسجيل الدخول باستخدام Google غير مهيأ على هذا الخادم', 503);
   }
   return { clientId: GOOGLE_CLIENT_ID, clientSecret: GOOGLE_CLIENT_SECRET, callbackUrl: GOOGLE_CALLBACK_URL };
 };
@@ -333,7 +333,7 @@ export const googleVerify = async (
   res: Response,
 ): Promise<void> => {
   const nonce = cookieValue(req, GOOGLE_NONCE_COOKIE);
-  if (!nonce) throw new AppError('Ø§Ù†ØªÙ‡Øª Ø¬Ù„Ø³Ø© Ø§Ù„ØªØ­Ù‚Ù‚Ø› Ø£Ø¹Ø¯ Ø§Ù„Ù…Ø­Ø§ÙˆÙ„Ø©', 401);
+  if (!nonce) throw new AppError('انتهت جلسة التحقق؛ أعد المحاولة', 401);
 
   const claims = await verifyGoogleIdentityToken(req.body.credential, googleClientId(), nonce);
   clearGoogleNonceCookie(res);
