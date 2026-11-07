@@ -12,5 +12,9 @@
   "scripts": {
     "build": "npm run build --workspace mabdeen-client && npm run build --workspace mabdeen-server",
     "typecheck": "npm run typecheck --workspace mabdeen-client && npm run typecheck --workspace mabdeen-server"
+  },
+  "optionalDependencies": {
+    "@rolldown/binding-linux-x64-gnu": "1.2.15",
+    "@rolldown/binding-wasm32-wasi": "1.2.15"
   }
 }
