@@ -1,0 +1,22 @@
+import { Router } from 'express';
+import { comment, comments, create, feed, like, manage, mine, remove, removeCommentHandler, show, update, upload } from '../controllers/community.controller';
+import { authenticate, authorize, optionalAuthenticate } from '../middlewares/auth.middleware';
+import { uploadCommentAttachment, uploadSingleImage } from '../middlewares/upload.middleware';
+import { publicActionLimiter } from '../middlewares/rate-limit.middleware';
+import { validate } from '../middlewares/validate.middleware';
+import { asyncHandler } from '../utils/async-handler';
+import { communityCommentSchema, communityPostIdSchema, communityPostSchema, communityPostUpdateSchema } from '../validators/community-post.validator';
+
+export const communityRouter = Router();
+communityRouter.get('/posts', optionalAuthenticate, asyncHandler(feed));
+communityRouter.get('/posts/mine', authenticate, asyncHandler(mine));
+communityRouter.get('/posts/manage', authenticate, authorize('Admin'), asyncHandler(manage));
+communityRouter.post('/posts/upload', authenticate, uploadSingleImage.single('image'), asyncHandler(upload));
+communityRouter.post('/posts', authenticate, validate({ body: communityPostSchema }), asyncHandler(create));
+communityRouter.get('/posts/:id', optionalAuthenticate, validate({ params: communityPostIdSchema }), asyncHandler(show));
+communityRouter.get('/posts/:id/comments', validate({ params: communityPostIdSchema }), asyncHandler(comments));
+communityRouter.post('/posts/:id/comments', authenticate, publicActionLimiter, uploadCommentAttachment.single('file'), validate({ params: communityPostIdSchema, body: communityCommentSchema }), asyncHandler(comment));
+communityRouter.post('/posts/:id/like', authenticate, publicActionLimiter, validate({ params: communityPostIdSchema }), asyncHandler(like));
+communityRouter.delete('/comments/:id', authenticate, validate({ params: communityPostIdSchema }), asyncHandler(removeCommentHandler));
+communityRouter.patch('/posts/:id', authenticate, validate({ params: communityPostIdSchema, body: communityPostUpdateSchema }), asyncHandler(update));
+communityRouter.delete('/posts/:id', authenticate, validate({ params: communityPostIdSchema }), asyncHandler(remove));

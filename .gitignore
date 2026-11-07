@@ -1,0 +1,27 @@
+# Environment secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Dependencies and generated output
+**/node_modules/
+**/dist/
+**/dev-dist/
+.vercel/
+
+# Local state, logs, uploads, and temporary files
+.local-logs/
+**/.local-logs/
+**/*.log
+server/data/
+server/uploads/
+**/uploads/
+uploads-tmp/
+**/uploads-tmp/
+**/private-chat-files/
+**/private-vault/
+**/private-report-evidence/
+**/private-parent-verifications/

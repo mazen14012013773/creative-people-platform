@@ -1,0 +1,16 @@
+{
+  "name": "mabdeen-platform",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "build": "npm run build --workspace mabdeen-client && npm run build --workspace mabdeen-server",
+    "typecheck": "npm run typecheck --workspace mabdeen-client && npm run typecheck --workspace mabdeen-server"
+  }
+}

@@ -1,0 +1,21 @@
+import { query } from '../config/db';
+export type ArticleStatus='PUBLISHED'|'HIDDEN';
+export interface Article{id:string;title:string;slug:string;excerpt:string;content:string;coverImage:string;category:string;authorName:string;authorAvatar:string|null;authorId:string|null;status:ArticleStatus;publishedAt:string;readTime:number;}
+type ArticleRow=Omit<Article,'coverImage'|'authorName'|'authorAvatar'|'authorId'|'status'|'publishedAt'|'readTime'>&{cover_image:string;author_name:string;author_avatar:string|null;author_id:string|null;status:ArticleStatus;published_at:string;read_time:number};
+const mapArticle=(r:ArticleRow):Article=>({id:r.id,title:r.title,slug:r.slug,excerpt:r.excerpt,content:r.content,coverImage:r.cover_image,category:r.category,authorName:r.author_name,authorAvatar:r.author_avatar,publishedAt:r.published_at,readTime:Number(r.read_time),authorId:r.author_id,status:r.status});
+const numbered=(parts:string[],values:unknown[])=>{const where=parts.map(p=>p.replace(/\$(\d+)/g,(_,n)=>`$${Number(n)+values.length}`));return where;};
+export const findArticles=async(options:{query?:string;category?:string;limit:number}):Promise<Article[]>=>{
+ const filters:string[]=["status='PUBLISHED'"];const p:unknown[]=[];if(options.category){p.push(options.category);filters.push(`category=$${p.length}`);}if(options.query){const escaped=options.query.replace(/[!%_]/g,'!$&');p.push(`%${escaped}%`,`%${escaped}%`);filters.push(`(title ILIKE $${p.length-1} ESCAPE '!' OR excerpt ILIKE $${p.length} ESCAPE '!')`);}p.push(options.limit);const {rows}=await query(`SELECT * FROM articles WHERE ${filters.join(' AND ')} ORDER BY published_at DESC LIMIT $${p.length}`,p);return(rows as ArticleRow[]).map(mapArticle);
+};
+export const findArticleBySlug=async(slug:string):Promise<Article|null>=>{const {rows}=await query("SELECT * FROM articles WHERE slug=$1 AND status='PUBLISHED'",[slug]);return rows[0]?mapArticle(rows[0] as ArticleRow):null;};
+export const findArticleById=async(id:string):Promise<Article|null>=>{const {rows}=await query('SELECT * FROM articles WHERE id=$1',[id]);return rows[0]?mapArticle(rows[0] as ArticleRow):null;};
+export const findArticleSlugById=async(id:string):Promise<string|null>=>{const {rows}=await query('SELECT slug FROM articles WHERE id=$1',[id]);return(rows[0] as {slug:string}|undefined)?.slug??null;};
+export interface AdminArticleListResult{items:Article[];total:number;}
+export const listArticlesForAdmin=async(options:{query?:string;status?:ArticleStatus;page:number;limit:number}):Promise<AdminArticleListResult>=>{
+ const filters:string[]=[];const p:unknown[]=[];if(options.status){p.push(options.status);filters.push(`status=$${p.length}`);}if(options.query){const e=options.query.replace(/[!%_]/g,'!$&');p.push(`%${e}%`,`%${e}%`,`%${e}%`);filters.push(`(title ILIKE $${p.length-2} ESCAPE '!' OR excerpt ILIKE $${p.length-1} ESCAPE '!' OR category ILIKE $${p.length} ESCAPE '!')`);}const where=filters.length?`WHERE ${filters.join(' AND ')}`:'';const [count,data]=await Promise.all([query(`SELECT COUNT(*) AS total FROM articles ${where}`,p),query(`SELECT * FROM articles ${where} ORDER BY published_at DESC LIMIT $${p.length+1} OFFSET $${p.length+2}`,[...p,options.limit,(options.page-1)*options.limit])]);return{items:(data.rows as ArticleRow[]).map(mapArticle),total:Number(count.rows[0]?.total??0)};
+};
+export interface AdminArticlePatch{title?:string;excerpt?:string;category?:string;coverImage?:string|null;status?:ArticleStatus;}
+export const updateArticleById=async(id:string,patch:AdminArticlePatch):Promise<Article|null>=>{
+ const cols:Array<[keyof AdminArticlePatch,string]>=[['title','title'],['excerpt','excerpt'],['category','category'],['coverImage','cover_image'],['status','status']];const sets:string[]=[];const p:unknown[]=[];for(const [key,col] of cols)if(patch[key]!==undefined){p.push(patch[key]);sets.push(`${col}=$${p.length}`);}if(!sets.length)return findArticleById(id);p.push(id);const r=await query(`UPDATE articles SET ${sets.join(',')} WHERE id=$${p.length} RETURNING id`,p);return r.rowCount?findArticleById(id):null;
+};
+export const deleteArticleById=async(id:string):Promise<boolean>=>{const {rowCount}=await query('DELETE FROM articles WHERE id=$1 RETURNING id',[id]);return(rowCount??0)>0;};
