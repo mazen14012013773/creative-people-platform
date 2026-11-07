@@ -14,7 +14,7 @@
     "typecheck": "npm run typecheck --workspace mabdeen-client && npm run typecheck --workspace mabdeen-server"
   },
   "optionalDependencies": {
-    "@rolldown/binding-linux-x64-gnu": "1.2.15",
-    "@rolldown/binding-wasm32-wasi": "1.2.15"
+    "@rolldown/binding-linux-x64-gnu": "1.2.16",
+    "@rolldown/binding-wasm32-wasi": "1.2.16"
   }
 }
