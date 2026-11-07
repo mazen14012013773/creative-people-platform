@@ -24,6 +24,10 @@ const notificationIcons: Record<string, LucideIcon> = {
 
 export const NotificationBell = () => {
   const { user } = useAuth();
+  const canLoadNotifications = Boolean(
+    user?.profileComplete &&
+    (user.role !== 'Freelancer' || user.accountStatus === 'ACTIVE'),
+  );
   const navigate = useNavigate();
   const client = useQueryClient();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -31,7 +35,7 @@ export const NotificationBell = () => {
   const query = useQuery({
     queryKey: ['notification-inbox'],
     queryFn: notificationsApi.inbox,
-    enabled: Boolean(user),
+    enabled: canLoadNotifications,
     refetchInterval: 5000,
   });
   const refresh = async () => { await client.invalidateQueries({ queryKey: ['notification-inbox'] }); };
@@ -54,7 +58,7 @@ export const NotificationBell = () => {
     };
   }, [open]);
 
-  if (!user) return null;
+  if (!user || !canLoadNotifications) return null;
 
   const unread = query.data?.unreadCount ?? 0;
   const openItem = (item: NonNullable<typeof query.data>['items'][number]) => {

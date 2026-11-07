@@ -11,7 +11,8 @@ export const RewardCelebrationManager = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const toast = useToast();
-  const inbox = useQuery({ queryKey: ['notification-inbox'], queryFn: notificationsApi.inbox, enabled: user?.role === 'Freelancer' });
+  const canLoadRewardsInbox = user?.role === 'Freelancer' && user.profileComplete && user.accountStatus === 'ACTIVE';
+  const inbox = useQuery({ queryKey: ['notification-inbox'], queryFn: notificationsApi.inbox, enabled: canLoadRewardsInbox });
   const notification = inbox.data?.items.find((item) => item.type === 'REWARD_EARNED' && item.message.includes('أكملت الطلب بنجاح') && !item.isRead);
   const rewards = useQuery({ queryKey: ['freelancer-rewards'], queryFn: rewardsApi.get, enabled: Boolean(notification) });
   const markRead = useMutation({

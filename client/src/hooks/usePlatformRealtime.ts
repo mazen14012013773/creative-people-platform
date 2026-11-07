@@ -10,7 +10,11 @@ export const usePlatformRealtime = (): void => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!user) return undefined;
+    const canUsePlatformRealtime = Boolean(
+      user?.profileComplete &&
+      (user.role !== 'Freelancer' || user.accountStatus === 'ACTIVE'),
+    );
+    if (!user || !canUsePlatformRealtime) return undefined;
     const controller = new AbortController();
     let retryDelay = 1000;
 
@@ -116,5 +120,5 @@ export const usePlatformRealtime = (): void => {
 
     void connect();
     return () => controller.abort();
-  }, [queryClient, refreshUser, user?.accountStatus, user?.id]);
+  }, [queryClient, refreshUser, user?.profileComplete, user?.accountStatus, user?.id]);
 };
