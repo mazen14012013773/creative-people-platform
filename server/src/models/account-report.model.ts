@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { getClient, query } from '../config/db';
-import { uploadPrivateFile, createPrivateFileUrl } from '../services/storage.service';
+import { uploadPrivateFile, createPrivateFileUrl, deleteCloudFile } from '../services/storage.service';
 import { notifyAdministrators, createUserNotification } from './notification.model';
 import { AppError } from '../utils/app-error';
 import { REPORT_PROOF_EXTENSIONS, REPORT_PROOF_EXTENSIONS_LABEL } from '../config/upload-rules';
@@ -24,6 +24,7 @@ export const submitAccountReport = async (reporterId: string, input: CreateInput
 
   const id = randomUUID();
   const proofs: Array<{ id: string; name: string; mimeType: string; size: number; storageKey: string }> = [];
+  const uploadedKeys: string[] = [];
   try {
     for (const file of files) {
       const ext = REPORT_PROOF_EXTENSIONS[file.mimetype] ? `.${REPORT_PROOF_EXTENSIONS[file.mimetype]}` : '';
@@ -32,11 +33,13 @@ export const submitAccountReport = async (reporterId: string, input: CreateInput
       const fileId = randomUUID();
       const storageKey = path.posix.join(id, `${fileId}${ext}`);
       await uploadPrivateFile(storageKey, file.buffer, file.mimetype);
+      uploadedKeys.push(storageKey);
       proofs.push({ id: fileId, name: safeName(file.originalname), mimeType: file.mimetype, size: file.size, storageKey });
     }
     await query(`INSERT INTO account_reports (id, reporter_id, reported_user_id, reason_category, description, proof_files)
       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`, [id, reporterId, target.id, input.reasonCategory, input.description, JSON.stringify(proofs)]);
   } catch (error) {
+    await Promise.all(uploadedKeys.map((key) => deleteCloudFile(key).catch(() => undefined)));
     throw error;
   }
   await notifyAdministrators('بلاغ جديد عن حساب', `${target.name}: ${input.description.slice(0, 140)}`, '/admin/reports');

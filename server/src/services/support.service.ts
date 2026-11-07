@@ -118,6 +118,6 @@ export const getSupportMessageAttachment = async (requesterId: string, ticketId:
   const sender = await getSender(requesterId);
   const attachment = await findSupportAttachment(ticketId, messageId);
   if (!attachment || (sender.type !== 'ADMIN' && attachment.userId !== requesterId)) throw new AppError('الملف غير موجود أو لا تملك صلاحية عرضه.', 404);
-  const url = await getPrivateFileUrl(attachment.storageKey, attachment.name);
+  const url = await getPrivateFileUrl(attachment.storageKey);
   return { ...attachment, url };
 };

@@ -104,7 +104,7 @@ export const parentChildMessageAttachment = async (parentId: string, childId: st
   const attachment = await findLinkedChildMessageAttachment(messageId, childId);
   if (!attachment) throw new AppError('Attachment was not found for this linked account', 404);
   await recordParentAccess(parentId, childId, 'VIEW_MESSAGES', attachment.senderId === childId ? attachment.receiverId : attachment.senderId);
-  const url = await getPrivateFileUrl(attachment.storageKey, attachment.name);
+  const url = await getPrivateFileUrl(attachment.storageKey);
   return { url, name: attachment.name, mimeType: attachment.mimeType };
 };
 

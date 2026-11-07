@@ -88,6 +88,6 @@ export const sendChatMessage = async (
 export const getChatAttachment = async (messageId: string, userId: string) => {
   const attachment = await findAttachmentForParticipant(messageId, userId);
   if (!attachment) throw new AppError('الملف غير موجود أو ليس لديك صلاحية لعرضه.', 404);
-  const url = await getPrivateFileUrl(attachment.attachment_storage_key, attachment.attachment_name);
+  const url = await getPrivateFileUrl(attachment.attachment_storage_key);
   return { url, name: attachment.attachment_name, mimeType: attachment.attachment_mime };
 };

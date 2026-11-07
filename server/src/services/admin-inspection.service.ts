@@ -73,7 +73,7 @@ export const getChatAttachmentFile = async (
   });
 
   return {
-    url: await getPrivateFileUrl(attachment.storageKey, attachment.name),
+    url: await getPrivateFileUrl(attachment.storageKey, download ? attachment.name : undefined),
     name: attachment.name,
     mimeType: attachment.mimeType,
     sha256: '',
