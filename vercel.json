@@ -20,11 +20,19 @@
       "dest": "api/[...path].ts"
     },
     {
+      "src": "/(assets|images)/(.*)",
+      "dest": "/client/$1/$2"
+    },
+    {
+      "src": "/(manifest\\.webmanifest|registerSW\\.js|sw\\.js|workbox-.*\\.js|favicon\\.ico|robots\\.txt|404\\.html)",
+      "dest": "/client/$1"
+    },
+    {
       "handle": "filesystem"
     },
     {
       "src": "/(.*)",
-      "dest": "/client/dist/index.html"
+      "dest": "/client/index.html"
     }
   ]
 }
