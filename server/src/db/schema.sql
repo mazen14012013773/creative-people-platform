@@ -31,13 +31,13 @@ CREATE TABLE IF NOT EXISTS users (
   linkedin_url TEXT,
   website_url TEXT,
   is_available INTEGER NOT NULL DEFAULT 1 CHECK (is_available IN (0, 1)),
-  is_featured INTEGER NOT NULL DEFAULT 0 CHECK (is_featured IN (0, 1)),
+  is_featured BOOLEAN NOT NULL DEFAULT FALSE,
   is_verified INTEGER NOT NULL DEFAULT 0 CHECK (is_verified IN (0, 1)),
   featured_until TEXT,
   avg_response_hours REAL CHECK (avg_response_hours IS NULL OR avg_response_hours >= 0),
   token_invalid_before TEXT,
   profile_complete INTEGER NOT NULL DEFAULT 1 CHECK (profile_complete IN (0, 1)),
-  is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 , points_balance INTEGER NOT NULL DEFAULT 0 CHECK (points_balance >= 0), account_suspended_until TEXT, parent_email TEXT, is_deleted INTEGER NOT NULL DEFAULT 0 CHECK (is_deleted IN (0, 1)), deleted_at TEXT, is_private INTEGER NOT NULL DEFAULT 0 CHECK (is_private IN (0, 1)));
@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS banners (
     placement IN ('home_hero', 'home_featured', 'home_inline', 'profile_sidebar', 'results_inline')
   ),
   priority INTEGER NOT NULL DEFAULT 0,
-  is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
   starts_at TEXT,
   ends_at TEXT,
   impression_count INTEGER NOT NULL DEFAULT 0,
@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   id TEXT PRIMARY KEY NOT NULL,
   title TEXT NOT NULL,
   message TEXT NOT NULL,
-  is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_by UUID REFERENCES users (id) ON DELETE SET NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -278,7 +278,7 @@ CREATE TABLE IF NOT EXISTS services (
   category TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-, media_json TEXT NOT NULL DEFAULT '[]', sources_json TEXT NOT NULL DEFAULT '[]', is_featured INTEGER NOT NULL DEFAULT 0 CHECK (is_featured IN (0, 1)), featured_until TEXT);
+, media_json TEXT NOT NULL DEFAULT '[]', sources_json TEXT NOT NULL DEFAULT '[]', is_featured BOOLEAN NOT NULL DEFAULT FALSE, featured_until TEXT);
 
 CREATE TABLE IF NOT EXISTS support_tickets (
   id TEXT PRIMARY KEY NOT NULL,

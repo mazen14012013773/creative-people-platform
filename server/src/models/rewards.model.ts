@@ -17,7 +17,7 @@ export const awardPoints = async (userId: string, amount: number, reason: string
     if (!inserted.rowCount) { await client.query('COMMIT'); return false; }
     const updated = await client.query('UPDATE users SET points_balance=points_balance+$1 WHERE id=$2 AND role=\'Freelancer\' RETURNING points_balance',[amount,userId]);
     after = Number(updated.rows[0]?.points_balance ?? beforeBalance);
-    if (beforeBalance <= 500 && after > 500) await client.query("UPDATE users SET is_featured=1,featured_until=$1 WHERE id=$2 AND role='Freelancer'",[new Date(Date.now()+7*24*60*60*1000).toISOString(),userId]);
+    if (beforeBalance <= 500 && after > 500) await client.query("UPDATE users SET is_featured=TRUE,featured_until=$1 WHERE id=$2 AND role='Freelancer'",[new Date(Date.now()+7*24*60*60*1000).toISOString(),userId]);
     await client.query('COMMIT');
   } catch(e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
   if (getFreelancerLevel(after).number > getFreelancerLevel(beforeBalance).number) {
@@ -175,7 +175,7 @@ export const redeemReward = async (userId: string, reward: RewardCode, serviceId
     const existingUntil = user.is_featured && user.featured_until ? Date.parse(user.featured_until) : now;
     const startsAt = Math.max(now, Number.isFinite(existingUntil) ? existingUntil : now);
     const until = new Date(startsAt + 7 * 24 * 60 * 60 * 1000).toISOString();
-    await client.query('UPDATE users SET is_featured = 1, featured_until = $1 WHERE id = $2',[until,userId]);
+    await client.query('UPDATE users SET is_featured = TRUE, featured_until = $1 WHERE id = $2',[until,userId]);
     await client.query(`INSERT INTO user_notifications(id,user_id,type,title,message,link) VALUES($1,$2,'BADGE_EARNED',$3,$4,$5) RETURNING id`,[randomUUID(),userId,'تم تمييز بروفايلك','ظهر بروفايلك ضمن الحسابات المميزة لمدة 7 أيام.',`/freelancers/${userId}`]);
   } else {
     const activeService = (await client.query('SELECT is_featured, featured_until FROM services WHERE id = $1 AND freelancer_id = $2',[serviceId!,userId])).rows[0] as { is_featured: number; featured_until: string | null };

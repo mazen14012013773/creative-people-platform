@@ -17,7 +17,7 @@ export interface ReportProofInput { buffer: Buffer; originalname: string; mimety
 const safeName = (name: string) => path.basename(name.replace(/[\\/]/g, '_')).replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 180) || 'evidence';
 
 export const submitAccountReport = async (reporterId: string, input: CreateInput, files: ReportProofInput[]) => {
-  const target = (await query("SELECT id, name, role FROM users WHERE id = $1 AND role <> 'Admin' AND is_active = 1", [input.reportedUserId])).rows[0] as { id: string; name: string; role: string } | undefined;
+  const target = (await query("SELECT id, name, role FROM users WHERE id = $1 AND role <> 'Admin' AND is_active = TRUE", [input.reportedUserId])).rows[0] as { id: string; name: string; role: string } | undefined;
   if (!target) throw new AppError('Reported account is not available.', 404);
   if (reporterId === target.id) throw new AppError('You cannot report your own account.', 400);
   if ((await query("SELECT 1 FROM account_reports WHERE reporter_id = $1 AND reported_user_id = $2 AND status = 'PENDING'", [reporterId, target.id])).rowCount) throw new AppError('You already have a pending report for this account.', 409);
@@ -79,9 +79,9 @@ export const resolveAccountReport = async (reportId: string, adminId: string, in
     if (!target) throw new AppError('Reported account was removed.', 409);
     if (input.action === 'TEMP_BLOCK') {
       const until = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-      await client.query('UPDATE users SET is_active = 0, account_suspended_until = $1, token_invalid_before = $2 WHERE id = $3', [until, new Date().toISOString(), target.id]);
+      await client.query('UPDATE users SET is_active = FALSE, account_suspended_until = $1, token_invalid_before = $2 WHERE id = $3', [until, new Date().toISOString(), target.id]);
     } else if (input.action === 'PERMANENT_BLOCK') {
-      await client.query('UPDATE users SET is_active = 0, account_suspended_until = NULL, token_invalid_before = $1 WHERE id = $2', [new Date().toISOString(), target.id]);
+      await client.query('UPDATE users SET is_active = FALSE, account_suspended_until = NULL, token_invalid_before = $1 WHERE id = $2', [new Date().toISOString(), target.id]);
     } else {
       await createUserNotification(target.id, 'ACCOUNT_STATUS', 'تنبيه من إدارة المنصة', input.notes || 'يرجى مراجعة قواعد الاستخدام.', '/');
     }

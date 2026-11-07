@@ -13,7 +13,7 @@ import { sanitizePlainText } from '../utils/sanitize';
 
 const notifySupportUpdates = async (userId: string) => {
   emitRealtimeEvent(userId, 'support');
-  const admins = await query("SELECT id FROM users WHERE role = 'Admin' AND is_active = 1");
+  const admins = await query("SELECT id FROM users WHERE role = 'Admin' AND is_active = TRUE");
   (admins.rows as Array<{id:string}>).forEach((admin) => emitRealtimeEvent(admin.id, 'support'));
 };
 
@@ -23,7 +23,7 @@ const notifySupportMessage = async (ticket: NonNullable<Awaited<ReturnType<typeo
     await createUserNotification(ticket.userId, 'NEW_MESSAGE', `رد جديد من الدعم الفني: ${ticket.subject}`, preview, `/?supportTicket=${encodeURIComponent(ticket.id)}`);
     return;
   }
-  const admins = await query("SELECT id FROM users WHERE role = 'Admin' AND is_active = 1");
+  const admins = await query("SELECT id FROM users WHERE role = 'Admin' AND is_active = TRUE");
   for (const admin of admins.rows as Array<{id:string}>) await createUserNotification(admin.id, 'NEW_MESSAGE', `طلب دعم جديد: ${ticket.subject}`, `رسالة من ${sender.name}: ${preview}`, `/admin?tab=support&ticketId=${encodeURIComponent(ticket.id)}`);
 };
 

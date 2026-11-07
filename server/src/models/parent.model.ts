@@ -3,8 +3,8 @@ import { query, getClient } from '../config/db';
 
 export interface ParentLinkRow { id: string; parent_id: string; child_id: string; status: 'PENDING' | 'APPROVED' | 'REJECTED'; created_at: string; parent_name?: string; parent_avatar?: string | null; child_name?: string; child_avatar?: string | null; child_email?: string; }
 
-export const findChildByEmail = async (email: string) => (await query("SELECT id, name, email, role FROM users WHERE lower(email) = lower($1) AND role = 'Freelancer' AND is_active = 1", [email])).rows[0] as { id: string; name: string; email: string; role: string } | undefined;
-export const findParentById = async (id: string) => (await query("SELECT id, name, email, role FROM users WHERE id = $1 AND role = 'Parent' AND is_active = 1", [id])).rows[0] as { id: string; name: string; email: string; role: string } | undefined;
+export const findChildByEmail = async (email: string) => (await query("SELECT id, name, email, role FROM users WHERE lower(email) = lower($1) AND role = 'Freelancer' AND is_active = TRUE", [email])).rows[0] as { id: string; name: string; email: string; role: string } | undefined;
+export const findParentById = async (id: string) => (await query("SELECT id, name, email, role FROM users WHERE id = $1 AND role = 'Parent' AND is_active = TRUE", [id])).rows[0] as { id: string; name: string; email: string; role: string } | undefined;
 export const findPendingParentLink = async (parentId: string, childId: string) => (await query("SELECT id FROM parent_child_links WHERE parent_id = $1 AND child_id = $2 AND status = 'PENDING'", [parentId, childId])).rows[0];
 export const createParentLink = async (parentId: string, childId: string): Promise<string> => {
   const id = randomUUID();
@@ -31,7 +31,7 @@ export const listLinkedChildren = async (parentId: string) => {
       (SELECT COUNT(*) FROM community_posts c WHERE c.author_id = u.id AND c.status = 'PUBLISHED') AS "postCount",
       (SELECT COUNT(*) FROM reviews r WHERE r.freelancer_id = u.id) AS "reviewCount"
     FROM parent_child_links l JOIN users u ON u.id = l.child_id
-  WHERE l.parent_id = $1 AND l.status = 'APPROVED' AND u.is_active = 1 ORDER BY l.responded_at DESC`, [parentId])).rows as Array<Record<string, any> & { id: string }>;
+  WHERE l.parent_id = $1 AND l.status = 'APPROVED' AND u.is_active = TRUE ORDER BY l.responded_at DESC`, [parentId])).rows as Array<Record<string, any> & { id: string }>;
   return Promise.all(children.map(async (child) => ({ ...child,
     skills: (await query(`SELECT s.id, s.name FROM user_skills us JOIN skills s ON s.id = us.skill_id WHERE us.user_id = $1 ORDER BY s.name`, [child.id])).rows,
     services: (await query("SELECT id, title, description, category, media_json AS \"mediaJson\", sources_json AS \"sourcesJson\", created_at AS \"createdAt\" FROM services WHERE freelancer_id = $1 AND status = 'active' ORDER BY created_at DESC", [child.id])).rows,
@@ -133,8 +133,8 @@ export const reviewParentVerification = async (id: string, adminId: string, appr
   const row = result.rows[0] as { child_id: string; parent_email: string };
   // Rejection keeps the account active so the minor can sign in and retry the
   // verification with corrected data instead of being permanently locked out.
-  await c.query('UPDATE users SET account_status = $1, is_active = 1, is_verified = $2, parent_approval_token = NULL WHERE id = $3', [approve ? 'ACTIVE' : 'REJECTED', approve ? 1 : 0, row.child_id]);
+  await c.query('UPDATE users SET account_status = $1, is_active = TRUE, is_verified = $2, parent_approval_token = NULL WHERE id = $3', [approve ? 'ACTIVE' : 'REJECTED', approve ? 1 : 0, row.child_id]);
   await c.query('COMMIT'); return row;
   } catch (error) { await c.query('ROLLBACK'); throw error; } finally { c.release(); }
 };
-export const markAccountVerificationPending = async (childId: string, parentEmail: string, token: string) => query("UPDATE users SET parent_email = $1, parent_approval_token = $2, account_status = 'PENDING_PARENT_APPROVAL' WHERE id = $3 AND role = 'Freelancer' AND is_active = 1 RETURNING id", [parentEmail, token, childId]);
+export const markAccountVerificationPending = async (childId: string, parentEmail: string, token: string) => query("UPDATE users SET parent_email = $1, parent_approval_token = $2, account_status = 'PENDING_PARENT_APPROVAL' WHERE id = $3 AND role = 'Freelancer' AND is_active = TRUE RETURNING id", [parentEmail, token, childId]);

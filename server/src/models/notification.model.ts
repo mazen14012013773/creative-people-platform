@@ -14,14 +14,14 @@ export const createUserNotification = async (userId: string, type: InboxNotifica
   await insertUserNotificationRecord(userId, type, title, message, link); emitRealtimeEvent(userId, 'notification');
 };
 export const notifyAdministrators = async (title: string, message: string, link: string) => {
-  const { rows } = await query("SELECT id FROM users WHERE role = 'Admin' AND is_active = 1");
+  const { rows } = await query("SELECT id FROM users WHERE role = 'Admin' AND is_active = TRUE");
   for (const admin of rows as Array<{ id: string }>) await createUserNotification(admin.id, 'NEW_REPORT', title, message, link);
 };
 export const createBroadcastInboxNotifications = async (title: string, message: string) => {
   const client = await getClient();
   try {
     await client.query('BEGIN');
-    const { rows } = await client.query('SELECT id FROM users WHERE is_active = 1');
+    const { rows } = await client.query('SELECT id FROM users WHERE is_active = TRUE');
     for (const user of rows as Array<{ id: string }>) {
       await client.query(`INSERT INTO user_notifications (id,user_id,type,title,message,link) VALUES ($1,$2,'ADMIN_ANNOUNCEMENT',$3,$4,'/')`, [randomUUID(), user.id, title, message]);
     }
@@ -45,7 +45,7 @@ export const markAllUserNotificationsRead = async (userId: string) => { await qu
 interface NotificationRow { id: string; title: string; message: string; is_active: boolean | number; created_at: string; }
 const mapNotification = (row: NotificationRow): SiteNotification => ({ id: row.id, title: row.title, message: row.message, isActive: Boolean(row.is_active), createdAt: row.created_at });
 export const listActiveNotifications = async (): Promise<SiteNotification[]> => {
-  const { rows } = await query('SELECT id,title,message,is_active,created_at FROM notifications WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1'); return (rows as NotificationRow[]).map(mapNotification);
+  const { rows } = await query('SELECT id,title,message,is_active,created_at FROM notifications WHERE is_active = TRUE ORDER BY created_at DESC LIMIT 1'); return (rows as NotificationRow[]).map(mapNotification);
 };
 export const listNotificationsForAdmin = async (input: { page: number; limit: number }): Promise<{ items: SiteNotification[]; total: number }> => {
   const [{ rows: countRows }, { rows }] = await Promise.all([
@@ -59,7 +59,7 @@ export const createNotification = async (title: string, message: string, adminId
   try {
     await client.query('BEGIN');
     const { rows } = await client.query(`INSERT INTO notifications (id,title,message,created_by) VALUES ($1,$2,$3,$4) RETURNING id,title,message,is_active,created_at`, [randomUUID(), title, message, adminId]);
-    const users = await client.query('SELECT id FROM users WHERE is_active = 1');
+    const users = await client.query('SELECT id FROM users WHERE is_active = TRUE');
     for (const user of users.rows as Array<{ id: string }>) await client.query(`INSERT INTO user_notifications (id,user_id,type,title,message,link) VALUES ($1,$2,'ADMIN_ANNOUNCEMENT',$3,$4,'/')`, [randomUUID(), user.id, title, message]);
     await client.query('COMMIT');
     emitRealtimeEventToAll('notification');
@@ -67,6 +67,6 @@ export const createNotification = async (title: string, message: string, adminId
   } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
 };
 export const setNotificationActive = async (id: string, isActive: boolean): Promise<SiteNotification | null> => {
-  const { rows } = await query('UPDATE notifications SET is_active = $1 WHERE id = $2 RETURNING id,title,message,is_active,created_at', [isActive ? 1 : 0, id]);
+  const { rows } = await query('UPDATE notifications SET is_active = $1 WHERE id = $2 RETURNING id,title,message,is_active,created_at', [isActive, id]);
   return rows[0] ? mapNotification(rows[0] as NotificationRow) : null;
 };

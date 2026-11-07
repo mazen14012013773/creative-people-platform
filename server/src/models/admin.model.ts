@@ -215,7 +215,7 @@ const ADMIN_ORDER_SELECT = `
 `;
 
 export const getAdminUserById = async (userId: string): Promise<AdminUser | null> => {
-  const row = (await query(`${ADMIN_USER_SELECT} WHERE u.id = $1 AND u.is_deleted = FALSE LIMIT 1`, [userId])).rows[0] as AdminUserRow | undefined;
+  const row = (await query(`${ADMIN_USER_SELECT} WHERE u.id = $1 AND u.is_deleted = 0 LIMIT 1`, [userId])).rows[0] as AdminUserRow | undefined;
 
   return row ? mapAdminUser(row) : null;
 };
@@ -243,7 +243,7 @@ export const listAdminUsers = async (
 
   if (filters.verified !== undefined) {
     clauses.push(`u.is_verified = $${params.length + 1}`);
-    params.push(filters.verified);
+    params.push(filters.verified ? 1 : 0);
   }
 
   if (filters.q) {
@@ -277,7 +277,7 @@ export const setUserStatus = async (
   expectedIsActive?: boolean,
 ): Promise<AdminUser | null> => {
   const result = await query(
-    `UPDATE users SET is_active = $1 WHERE id = $2 AND is_deleted = FALSE AND role IN ('Freelancer', 'Buyer', 'Parent') AND ($3::boolean IS NULL OR is_active = $4)`,
+    `UPDATE users SET is_active = $1 WHERE id = $2 AND is_deleted = 0 AND role IN ('Freelancer', 'Buyer', 'Parent') AND ($3::boolean IS NULL OR is_active = $4)`,
     [isActive, userId, expectedIsActive ?? null, expectedIsActive ?? null],
   );
 
@@ -289,7 +289,7 @@ export const setUserFeatured = async (
   isFeatured: boolean,
   featuredUntil: string | null = null,
 ): Promise<AdminUser | null> => {
-  const result = await query(`UPDATE users SET is_featured = $1, featured_until = $2 WHERE id = $3 AND is_deleted = FALSE AND role = 'Freelancer'`, [isFeatured, isFeatured ? featuredUntil : null, userId]);
+  const result = await query(`UPDATE users SET is_featured = $1, featured_until = $2 WHERE id = $3 AND is_deleted = 0 AND role = 'Freelancer'`, [isFeatured, isFeatured ? featuredUntil : null, userId]);
 
   return result.rowCount ? getAdminUserById(userId) : null;
 };
@@ -298,7 +298,7 @@ export const setUserVerified = async (
   userId: string,
   isVerified: boolean,
 ): Promise<AdminUser | null> => {
-  const result = await query('UPDATE users SET is_verified = $1 WHERE id = $2 AND is_deleted = FALSE', [isVerified, userId]);
+  const result = await query('UPDATE users SET is_verified = $1 WHERE id = $2 AND is_deleted = 0', [isVerified ? 1 : 0, userId]);
 
   return result.rowCount ? getAdminUserById(userId) : null;
 };
@@ -307,7 +307,7 @@ export const setUserRole = async (
   userId: string,
   role: 'Freelancer' | 'Buyer' | 'Parent' | 'Admin',
 ): Promise<AdminUser | null> => {
-  const result = await query("UPDATE users SET role = $1 WHERE id = $2 AND is_deleted = FALSE AND role != 'Admin'", [role, userId]);
+  const result = await query("UPDATE users SET role = $1 WHERE id = $2 AND is_deleted = 0 AND role != 'Admin'", [role, userId]);
 
   return result.rowCount ? getAdminUserById(userId) : null;
 };
@@ -355,13 +355,13 @@ export const updateManagedUser = async (
   }
 
   values.push(userId);
-  const result = await query(`UPDATE users SET ${assignments.join(', ')} WHERE id = $${values.length} AND is_deleted = FALSE`, values);
+  const result = await query(`UPDATE users SET ${assignments.join(', ')} WHERE id = $${values.length} AND is_deleted = 0`, values);
 
   return result.rowCount ? getAdminUserById(userId) : null;
 };
 
 export const setUserPassword = async (userId: string, passwordHash: string): Promise<boolean> => {
-  const result = await query("UPDATE users SET password_hash = $1 WHERE id = $2 AND is_deleted = FALSE AND role != $3", [passwordHash, userId, 'Admin']);
+  const result = await query("UPDATE users SET password_hash = $1 WHERE id = $2 AND is_deleted = 0 AND role != $3", [passwordHash, userId, 'Admin']);
 
   return (result.rowCount ?? 0) > 0;
 };
@@ -378,7 +378,7 @@ export const deleteManagedUser = async (
   userId: string,
 ): Promise<{ deleted: true; archived: boolean }> => {
   try {
-    const result = await query("DELETE FROM users WHERE id = $1 AND role != 'Admin' AND is_deleted = FALSE", [userId]);
+    const result = await query("DELETE FROM users WHERE id = $1 AND role != 'Admin' AND is_deleted = 0", [userId]);
 
     if ((result.rowCount ?? 0) > 0) {
       return { deleted: true, archived: false };
@@ -393,9 +393,9 @@ export const deleteManagedUser = async (
 
   const now = new Date().toISOString();
   const archived = await query(
-    `UPDATE users SET is_deleted = TRUE, deleted_at = $1, is_active = FALSE, email = $2,
+    `UPDATE users SET is_deleted = 1, deleted_at = $1, is_active = FALSE, email = $2,
       token_invalid_before = $3, updated_at = CURRENT_TIMESTAMP
-     WHERE id = $4 AND role != 'Admin' AND is_deleted = FALSE`,
+     WHERE id = $4 AND role != 'Admin' AND is_deleted = 0`,
     [now, `deleted+${userId}@removed.invalid`, now, userId],
   );
 
@@ -611,11 +611,11 @@ export const deleteReview = async (reviewId: string): Promise<boolean> => {
 export const getAdminStats = async (): Promise<AdminStats> => {
   const totals = (await query(
       `SELECT
-         (SELECT COUNT(*) FROM users WHERE role = 'Freelancer' AND is_deleted = FALSE) AS freelancers,
-         (SELECT COUNT(*) FROM users WHERE role = 'Freelancer' AND is_active = TRUE AND is_deleted = FALSE) AS active_freelancers,
-         (SELECT COUNT(*) FROM users WHERE role = 'Freelancer' AND is_featured = TRUE AND is_deleted = FALSE) AS featured_freelancers,
-         (SELECT COUNT(*) FROM users WHERE role = 'Freelancer' AND is_verified = TRUE AND is_deleted = FALSE) AS verified_freelancers,
-         (SELECT COUNT(*) FROM reviews rv JOIN users u ON u.id = rv.freelancer_id WHERE u.is_deleted = FALSE) AS reviews,
+         (SELECT COUNT(*) FROM users WHERE role = 'Freelancer' AND is_deleted = 0) AS freelancers,
+         (SELECT COUNT(*) FROM users WHERE role = 'Freelancer' AND is_active = TRUE AND is_deleted = 0) AS active_freelancers,
+         (SELECT COUNT(*) FROM users WHERE role = 'Freelancer' AND is_featured = TRUE AND is_deleted = 0) AS featured_freelancers,
+         (SELECT COUNT(*) FROM users WHERE role = 'Freelancer' AND is_verified = 1 AND is_deleted = 0) AS verified_freelancers,
+         (SELECT COUNT(*) FROM reviews rv JOIN users u ON u.id = rv.freelancer_id WHERE u.is_deleted = 0) AS reviews,
          ((SELECT COUNT(*) FROM reports WHERE status = 'Pending') + (SELECT COUNT(*) FROM account_reports WHERE status = 'PENDING')) AS pending_reports,
          (SELECT COUNT(*) FROM moderation_flags WHERE status = 'Pending') AS pending_flags,
          (SELECT COUNT(*) FROM ip_blocks WHERE expires_at IS NULL OR expires_at > NOW()) AS blocked_ips,
@@ -641,7 +641,7 @@ export const getAdminStats = async (): Promise<AdminStats> => {
        FROM skills sk
        JOIN user_skills us ON us.skill_id = sk.id
        JOIN users u ON u.id = us.user_id
-       WHERE u.role = 'Freelancer' AND u.is_active = TRUE AND u.is_deleted = FALSE
+       WHERE u.role = 'Freelancer' AND u.is_active = TRUE AND u.is_deleted = 0
        GROUP BY sk.id, sk.name
        ORDER BY freelancers DESC, sk.name ASC
        LIMIT 8`,

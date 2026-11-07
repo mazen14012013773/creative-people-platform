@@ -52,10 +52,10 @@ const mapService = (row: ServiceRow): Service => ({
 
 export const listActiveServices = async (freelancerId?: string): Promise<Service[]> => {
   const sql = freelancerId
-    ? `${SELECT_SERVICES} WHERE s.status = 'active' AND s.freelancer_id = $1 AND u.is_active = 1 AND u.account_status = 'ACTIVE'
-       ORDER BY (s.is_featured = 1 AND s.featured_until > CURRENT_TIMESTAMP) DESC, s.created_at DESC`
-    : `${SELECT_SERVICES} WHERE s.status = 'active' AND u.is_active = 1 AND u.account_status = 'ACTIVE'
-       ORDER BY (s.is_featured = 1 AND s.featured_until > CURRENT_TIMESTAMP) DESC, s.created_at DESC`;
+    ? `${SELECT_SERVICES} WHERE s.status = 'active' AND s.freelancer_id = $1 AND u.is_active = TRUE AND u.account_status = 'ACTIVE'
+       ORDER BY (s.is_featured = 1 AND NULLIF(s.featured_until, '')::timestamptz > CURRENT_TIMESTAMP) DESC, s.created_at DESC`
+    : `${SELECT_SERVICES} WHERE s.status = 'active' AND u.is_active = TRUE AND u.account_status = 'ACTIVE'
+       ORDER BY (s.is_featured = 1 AND NULLIF(s.featured_until, '')::timestamptz > CURRENT_TIMESTAMP) DESC, s.created_at DESC`;
   const result = await query<ServiceRow>(sql, freelancerId ? [freelancerId] : []);
   return result.rows.map(mapService);
 };

@@ -51,7 +51,7 @@ export const createOrder=async(buyerId:string,serviceId:string,idempotencyKey:st
   const replay=(await c.query('SELECT order_id FROM order_idempotency_keys WHERE user_id=$1 AND idempotency_key=$2 FOR UPDATE',[buyerId,idempotencyKey])).rows[0] as {order_id:string}|undefined;
   if(replay){const prior=await findOrderRow(replay.order_id,c);if(prior){result={order:mapOrder(prior),replayed:true};await c.query('COMMIT');return result;}}
   const service=(await c.query(`SELECT s.id,s.freelancer_id,s.title,s.price FROM services s JOIN users u ON u.id=s.freelancer_id
-   WHERE s.id=$1 AND s.status='active' AND u.is_active=1 AND u.account_status='ACTIVE' FOR UPDATE OF s`,[serviceId])).rows[0] as {id:string;freelancer_id:string;title:string;price:number}|undefined;
+   WHERE s.id=$1 AND s.status='active' AND u.is_active=TRUE AND u.account_status='ACTIVE' FOR UPDATE OF s`,[serviceId])).rows[0] as {id:string;freelancer_id:string;title:string;price:number}|undefined;
   if(!service)throw new AppError('الخدمة غير متاحة للطلب.',404); if(service.freelancer_id===buyerId)throw new AppError('لا يمكنك طلب خدمتك بنفسك.',422);
   const orderId=randomUUID();
   await c.query(`INSERT INTO orders(id,service_id,buyer_id,freelancer_id,price_amount,status,service_title) VALUES($1,$2,$3,$4,$5,'PENDING',$6) RETURNING id`,[orderId,service.id,buyerId,service.freelancer_id,Number(service.price??0),service.title]);
@@ -145,7 +145,7 @@ export const reviewOrder=async(orderId:string,buyerId:string,rating:number,comme
 };
 const awardOrderPoints=async(c:any,userId:string,amount:number,reason:string,key:string)=>{
  const added=await c.query(`INSERT INTO points_history(id,user_id,amount,reason,source_key) SELECT $1,id,$2,$3,$4 FROM users WHERE id=$5 AND role='Freelancer' ON CONFLICT(source_key) DO NOTHING RETURNING id`,[randomUUID(),amount,reason,key,userId]);if(!added.rowCount)return;
- const r=await c.query(`UPDATE users SET points_balance=points_balance+$1 WHERE id=$2 AND role='Freelancer' RETURNING points_balance`,[amount,userId]);const balance=Number(r.rows[0]?.points_balance??0);if(balance>500)await c.query(`UPDATE users SET is_featured=1,featured_until=CASE WHEN featured_until IS NULL OR featured_until='' THEN (CURRENT_TIMESTAMP+INTERVAL '7 days')::text ELSE featured_until END WHERE id=$1 AND role='Freelancer'`,[userId]);
+ const r=await c.query(`UPDATE users SET points_balance=points_balance+$1 WHERE id=$2 AND role='Freelancer' RETURNING points_balance`,[amount,userId]);const balance=Number(r.rows[0]?.points_balance??0);if(balance>500)await c.query(`UPDATE users SET is_featured=TRUE,featured_until=CASE WHEN featured_until IS NULL OR featured_until='' THEN (CURRENT_TIMESTAMP+INTERVAL '7 days')::text ELSE featured_until END WHERE id=$1 AND role='Freelancer'`,[userId]);
 };
 export const replyToOrderReview=async(orderId:string,freelancerId:string,reply:string)=>{
  const c=await getClient();let review:any;let buyerId:string;try{await c.query('BEGIN');const o=await findOrderRow(orderId,c);if(!o)throw new AppError('Order not found.',404);if(o.freelancer_id!==freelancerId)throw new AppError('Only the assigned freelancer may reply.',403);if(o.status!=='COMPLETED')throw new AppError('Replies are available after completion.',409);

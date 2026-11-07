@@ -38,7 +38,7 @@ export const listConversations = async (userId: string): Promise<ChatConversatio
       (SELECT COUNT(*) FROM messages m WHERE m.sender_id = g.peer_id AND m.receiver_id = $6
         AND m.service_id IS NOT DISTINCT FROM g.service_id AND m.is_read = false) AS unread_count
     FROM grouped g JOIN users u ON u.id = g.peer_id LEFT JOIN services s ON s.id = g.service_id
-    WHERE u.is_active = 1 ORDER BY g.last_message_at DESC LIMIT 100`,
+    WHERE u.is_active = TRUE ORDER BY g.last_message_at DESC LIMIT 100`,
   [userId, userId, userId, userId, userId, userId]);
   return rows.map((row) => ({ userId: row.peer_id, name: row.name, avatarUrl: row.avatar_url,
     serviceId: row.service_id, serviceTitle: row.service_title, lastMessage: row.last_message,

@@ -168,7 +168,7 @@ export const approveParentVerification = async (token: string, mathAnswer: numbe
   const photoName = await saveParentPhoto(file);
   const result = await approveParentVerificationByToken(row.id, row.child_id, photoName);
   if (!result.rowCount) throw new AppError('تمت الموافقة على هذا الرابط مسبقًا', 409);
-  const admins = await query("SELECT id FROM users WHERE role = 'Admin' AND is_active = 1");
+  const admins = await query("SELECT id FROM users WHERE role = 'Admin' AND is_active = TRUE");
   for (const admin of admins.rows as Array<{id:string}>) await createUserNotification(admin.id, 'NEW_REPORT', 'طلب توثيق ولي أمر جديد', `وافق ولي أمر ${row.child_name ?? 'أحد المبدعين'} على توثيق الحساب، بانتظار مراجعة الإدارة.`, '/admin?tab=parent-verifications');
   emitRealtimeEvent(row.child_id, 'data');
   return { status: 'PENDING_ADMIN_REVIEW' as const };

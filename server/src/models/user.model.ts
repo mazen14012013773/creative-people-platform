@@ -69,7 +69,7 @@ export const awardProfileCompletion = async (client: PoolClient, userId: string,
   const after = before + points;
   await client.query(
     `UPDATE users SET points_balance = points_balance + $1,
-       is_featured = CASE WHEN points_balance <= 500 AND points_balance + $1 > 500 THEN 1 ELSE is_featured END,
+       is_featured = CASE WHEN points_balance <= 500 AND points_balance + $1 > 500 THEN TRUE ELSE is_featured END,
        featured_until = CASE WHEN points_balance <= 500 AND points_balance + $1 > 500
          THEN $2 ELSE featured_until END
      WHERE id = $3 AND role = 'Freelancer'`,
@@ -135,7 +135,7 @@ export const invalidateUserTokens = async (userId: string): Promise<void> => {
 export const restoreExpiredSuspension = async (user: UserRow): Promise<UserRow> => {
   if (user.is_active || !user.account_suspended_until || Date.parse(user.account_suspended_until) > Date.now()) return user;
   const result = await query<UserRow>(
-    `UPDATE users SET is_active = 1, account_suspended_until = NULL
+    `UPDATE users SET is_active = TRUE, account_suspended_until = NULL
      WHERE id = $1 AND account_suspended_until = $2 RETURNING *`,
     [user.id, user.account_suspended_until],
   );

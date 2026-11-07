@@ -186,7 +186,7 @@ const mapStats = (row: StatsRow | undefined): Omit<FreelancerStats, 'sellerBadge
 };
 
 const buildSearchClauses = (filters: SearchFreelancersFilters) => {
-  const clauses = ["u.role = 'Freelancer'", 'u.is_active = 1', "u.account_status = 'ACTIVE'", 'u.profile_complete = 1', 'u.is_private = 0'];
+  const clauses = ["u.role = 'Freelancer'", 'u.is_active = TRUE', "u.account_status = 'ACTIVE'", 'u.profile_complete = 1', 'u.is_private = 0'];
   const params: unknown[] = [];
   const parameter = (value: unknown): string => {
     params.push(value);
@@ -253,7 +253,7 @@ const buildSearchClauses = (filters: SearchFreelancersFilters) => {
 
   if (filters.featured === true) {
     clauses.push(
-      `(u.is_featured = 1 AND (u.featured_until IS NULL OR u.featured_until > strftime('%Y-%m-%dT%H:%M:%fZ', 'now')))`,
+      `(u.is_featured = TRUE AND (NULLIF(u.featured_until, '') IS NULL OR NULLIF(u.featured_until, '')::timestamptz > CURRENT_TIMESTAMP))`,
     );
   }
 
@@ -267,15 +267,15 @@ const buildSearchClauses = (filters: SearchFreelancersFilters) => {
 const sortClause = (sort: SearchFreelancersFilters['sort']): string => {
   switch (sort) {
     case 'newest':
-      return '(u.is_featured = 1 AND (u.featured_until IS NULL OR u.featured_until > CURRENT_TIMESTAMP)) DESC, u.created_at DESC';
+      return `(u.is_featured = TRUE AND (NULLIF(u.featured_until, '') IS NULL OR NULLIF(u.featured_until, '')::timestamptz > CURRENT_TIMESTAMP)) DESC, u.created_at DESC`;
     case 'rating':
-      return '(u.is_featured = 1 AND (u.featured_until IS NULL OR u.featured_until > CURRENT_TIMESTAMP)) DESC, COALESCE(s.avg_rating, 0) DESC, COALESCE(s.review_count, 0) DESC, u.created_at DESC';
+      return `(u.is_featured = TRUE AND (NULLIF(u.featured_until, '') IS NULL OR NULLIF(u.featured_until, '')::timestamptz > CURRENT_TIMESTAMP)) DESC, COALESCE(s.avg_rating, 0) DESC, COALESCE(s.review_count, 0) DESC, u.created_at DESC`;
     case 'budget_low':
-      return '(u.is_featured = 1 AND (u.featured_until IS NULL OR u.featured_until > CURRENT_TIMESTAMP)) DESC, CASE WHEN u.min_budget IS NULL THEN 1 ELSE 0 END ASC, u.min_budget ASC, u.created_at DESC';
+      return `(u.is_featured = TRUE AND (NULLIF(u.featured_until, '') IS NULL OR NULLIF(u.featured_until, '')::timestamptz > CURRENT_TIMESTAMP)) DESC, CASE WHEN u.min_budget IS NULL THEN 1 ELSE 0 END ASC, u.min_budget ASC, u.created_at DESC`;
     case 'response':
-      return '(u.is_featured = 1 AND (u.featured_until IS NULL OR u.featured_until > CURRENT_TIMESTAMP)) DESC, CASE WHEN u.avg_response_hours IS NULL THEN 1 ELSE 0 END ASC, u.avg_response_hours ASC, u.created_at DESC';
+      return `(u.is_featured = TRUE AND (NULLIF(u.featured_until, '') IS NULL OR NULLIF(u.featured_until, '')::timestamptz > CURRENT_TIMESTAMP)) DESC, CASE WHEN u.avg_response_hours IS NULL THEN 1 ELSE 0 END ASC, u.avg_response_hours ASC, u.created_at DESC`;
     default:
-      return '(u.is_featured = 1 AND (u.featured_until IS NULL OR u.featured_until > CURRENT_TIMESTAMP)) DESC, COALESCE(s.avg_rating, 0) DESC, u.created_at DESC';
+      return `(u.is_featured = TRUE AND (NULLIF(u.featured_until, '') IS NULL OR NULLIF(u.featured_until, '')::timestamptz > CURRENT_TIMESTAMP)) DESC, COALESCE(s.avg_rating, 0) DESC, u.created_at DESC`;
   }
 };
 
@@ -337,7 +337,7 @@ export const findPublicFreelancerById = async (
               is_available, is_featured, is_verified, featured_until, points_balance,
               avg_response_hours, created_at
        FROM users
-       WHERE id = $1 AND role = 'Freelancer' AND is_active = 1 AND account_status = 'ACTIVE' AND profile_complete = 1
+       WHERE id = $1 AND role = 'Freelancer' AND is_active = TRUE AND account_status = 'ACTIVE' AND profile_complete = 1
          AND is_private = 0
        LIMIT 1`,
       [id],
@@ -350,7 +350,7 @@ export const findFreelancerForEvent = async (
   id: string,
 ): Promise<{ id: string; name: string } | null> => {
   const result = await query<{ id: string; name: string }>(`SELECT id, name FROM users
-    WHERE id = $1 AND role = 'Freelancer' AND is_active = 1 AND account_status = 'ACTIVE' AND profile_complete = 1 AND is_private = 0 LIMIT 1`, [id]);
+    WHERE id = $1 AND role = 'Freelancer' AND is_active = TRUE AND account_status = 'ACTIVE' AND profile_complete = 1 AND is_private = 0 LIMIT 1`, [id]);
   return result.rows[0] ?? null;
 };
 
