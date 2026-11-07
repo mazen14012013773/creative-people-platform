@@ -29,10 +29,8 @@ const BuyerDashboardPage = lazy(() => import('@/pages/BuyerDashboardPage').then(
 const ParentDashboardPage = lazy(() => import('@/pages/ParentDashboardPage').then((module) => ({ default: module.ParentDashboardPage })));
 const ServicesPage = lazy(() => import('@/pages/ServicesPage').then((module) => ({ default: module.ServicesPage })));
 const ChatPage = lazy(() => import('@/pages/Chat').then((module) => ({ default: module.ChatPage })));
-const CompleteGoogleProfilePage = lazy(() => import('@/pages/CompleteGoogleProfilePage').then((module) => ({ default: module.CompleteGoogleProfilePage })));
 const FavoritesPage = lazy(() => import('@/pages/FavoritesPage').then((module) => ({ default: module.FavoritesPage })));
 const GuidePage = lazy(() => import('@/pages/GuidePage').then((module) => ({ default: module.GuidePage })));
-const OAuthCallbackPage = lazy(() => import('@/pages/OAuthCallbackPage').then((module) => ({ default: module.OAuthCallbackPage })));
 const ParentVerifyPage = lazy(() => import('@/pages/ParentVerifyPage').then((module) => ({ default: module.ParentVerifyPage })));
 const FreelancerDashboardPage = lazy(() => import('@/pages/FreelancerDashboardPage').then((module) => ({ default: module.FreelancerDashboardPage })));
 const FreelancerRewardsPage = lazy(() => import('@/pages/FreelancerRewardsPage').then((module) => ({ default: module.FreelancerRewardsPage })));
@@ -63,9 +61,8 @@ const PendingAccountRouteGuard = ({ children }: { children: ReactNode }) => {
     user?.role === 'Freelancer' &&
     (user.accountStatus === 'PENDING_PARENT_APPROVAL' || user.accountStatus === 'PENDING_ADMIN_REVIEW');
   const isVerificationFlow = location.pathname === '/verify-parent';
-  const isCompletingSignup = location.pathname === '/complete-profile' && !user?.profileComplete;
 
-  if (!isLoading && isWaitingForVerification && location.pathname !== '/' && !isVerificationFlow && !isCompletingSignup) {
+  if (!isLoading && isWaitingForVerification && location.pathname !== '/' && !isVerificationFlow) {
     return <Navigate to="/" replace />;
   }
 
@@ -98,9 +95,6 @@ export const App = () => {
                 <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
-                <Route path="/auth/google/callback" element={<OAuthCallbackPage />} />
-                <Route path="/auth/github/callback" element={<OAuthCallbackPage />} />
-                <Route path="/complete-profile" element={<CompleteGoogleProfilePage />} />
                 <Route path="/verify-parent" element={<ParentVerifyPage />} />
 
                 <Route element={<Layout />}>

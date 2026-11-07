@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { authApi, type GoogleProfileCompletionPayload, type LoginPayload, type RegisterPayload } from '@/services/auth.service';
+import { authApi, type LoginPayload, type RegisterPayload } from '@/services/auth.service';
 import { tokenStorage } from '@/services/api';
 import type { AuthResult, AuthUser } from '@/types';
 
@@ -16,8 +16,6 @@ interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
   login: (payload: LoginPayload) => Promise<AuthResult>;
-  completeOAuthLogin: (token: string) => Promise<AuthUser>;
-  completeGoogleProfile: (payload: GoogleProfileCompletionPayload) => Promise<AuthUser>;
   register: (payload: RegisterPayload) => Promise<AuthUser>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -94,27 +92,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     [queryClient],
   );
 
-  const completeOAuthLogin = useCallback(async (token: string) => {
-    tokenStorage.set(token);
-    queryClient.clear();
-    try {
-      const currentUser = await authApi.me();
-      setUser(currentUser);
-      return currentUser;
-    } catch (error) {
-      tokenStorage.clear();
-      setUser(null);
-      throw error;
-    }
-  }, [queryClient]);
-
-  const completeGoogleProfile = useCallback(async (payload: GoogleProfileCompletionPayload) => {
-    const updatedUser = await authApi.completeGoogleProfile(payload);
-    queryClient.clear();
-    setUser(updatedUser);
-    return updatedUser;
-  }, [queryClient]);
-
   const register = useCallback(
     async (payload: RegisterPayload) => {
       const result = await authApi.register(payload);
@@ -178,8 +155,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [queryClient]);
 
   const value = useMemo(
-    () => ({ user, isLoading, login, completeOAuthLogin, completeGoogleProfile, register, logout, refreshUser, impersonatedUserName, beginImpersonation, endImpersonation }),
-    [user, isLoading, login, completeOAuthLogin, completeGoogleProfile, register, logout, refreshUser, impersonatedUserName, beginImpersonation, endImpersonation],
+    () => ({ user, isLoading, login, register, logout, refreshUser, impersonatedUserName, beginImpersonation, endImpersonation }),
+    [user, isLoading, login, register, logout, refreshUser, impersonatedUserName, beginImpersonation, endImpersonation],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

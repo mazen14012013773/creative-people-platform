@@ -1,35 +1,26 @@
-﻿import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthLayout } from '@/components/layout/AuthLayout';
-import { GitHubAuthButton } from '@/components/auth/GitHubAuthButton';
 import { InlineLoader } from '@/components/ui/Spinner';
 import { useAuth } from '@/context/AuthContext';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { getDashboardPath } from '@/lib/utils';
 import { loginSchema, type LoginFormValues } from '@/lib/validation';
 import { getErrorMessage } from '@/services/api';
-import { authApi } from '@/services/auth.service';
-import { renderGoogleSignInButton } from '@/lib/google-identity';
 
 export const LoginPage = () => {
   useDocumentTitle('تسجيل الدخول');
 
-  const { user, isLoading, login, completeOAuthLogin } = useAuth();
+  const { user, isLoading, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const returnPath = (location.state as { from?: string } | null)?.from;
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
-  const [googlePending, setGooglePending] = useState(false);
-  const googleButtonRef = useRef<HTMLDivElement>(null);
-  const googleBusyRef = useRef(false);
-  const googleCleanupRef = useRef<(() => void) | null>(null);
-  const googleError = searchParams.get('google_error');
-  const githubError = searchParams.get('github_error');
 
   const {
     register,
@@ -39,43 +30,6 @@ export const LoginPage = () => {
     resolver: zodResolver(loginSchema),
     defaultValues: { email: searchParams.get('email') ?? '', password: '' },
   });
-
-  useEffect(() => {
-    let active = true;
-    const initializeGoogleButton = async () => {
-      try {
-        if (!googleButtonRef.current) return;
-        googleCleanupRef.current = await renderGoogleSignInButton(googleButtonRef.current, async ({ credential }) => {
-            if (!credential || googleBusyRef.current) return;
-            googleBusyRef.current = true;
-            setGooglePending(true);
-            setServerError(null);
-            try {
-              const result = await authApi.googleVerify(credential);
-              const googleUser = await completeOAuthLogin(result.token);
-              if (!googleUser.profileComplete) {
-                navigate('/complete-profile', { replace: true });
-              } else {
-                navigate(returnPath || getDashboardPath(googleUser.role), { replace: true });
-              }
-            } catch (error) {
-              setServerError(getErrorMessage(error, 'تعذر تسجيل الدخول باستخدام Google'));
-            } finally {
-              googleBusyRef.current = false;
-              setGooglePending(false);
-            }
-          }, Math.min(400, googleButtonRef.current.clientWidth || 400));
-      } catch (error) {
-        if (active) setServerError(getErrorMessage(error, 'تعذر تهيئة تسجيل الدخول باستخدام Google'));
-      }
-    };
-
-    void initializeGoogleButton();
-    return () => {
-      active = false;
-      googleCleanupRef.current?.();
-    };
-  }, [completeOAuthLogin, navigate, returnPath]);
 
   if (!isLoading && user) {
     return <Navigate to={returnPath || getDashboardPath(user.role)} replace />;
@@ -107,20 +61,6 @@ export const LoginPage = () => {
       }
     >
       <form onSubmit={submit} className="space-y-4">
-        {googleError ? (
-          <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-            {googleError === 'cancelled'
-              ? 'تم إلغاء تسجيل الدخول باستخدام Google.'
-              : googleError === 'invalid_client'
-                ? 'إعدادات عميل Google لم تُقبل بعد. إذا أنشأت العميل أو حدّثته للتو، انتظر حتى تكتمل مزامنة الإعدادات ثم أعد المحاولة. إذا استمر الخطأ، انسخ السر الحالي وتأكد أنه تابع لنفس Client ID في server/.env ثم أعد تشغيل السيرفر.'
-                : 'تعذر تسجيل الدخول باستخدام Google. حاول مرة أخرى.'}
-          </div>
-        ) : null}
-        {githubError ? (
-          <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-            {githubError === 'cancelled' ? 'تم إلغاء تسجيل الدخول باستخدام GitHub.' : githubError === 'configuration' ? 'إعدادات GitHub OAuth غير مقبولة. راجع Client ID وClient Secret وعنوان Callback في إعدادات OAuth App.' : 'تعذر إكمال تسجيل الدخول عبر GitHub. حاول مرة أخرى، وإذا تكرر الخطأ راجع سجل السيرفر.'}
-          </div>
-        ) : null}
         {serverError ? (
           <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
             {serverError}
@@ -180,21 +120,6 @@ export const LoginPage = () => {
           )}
         </button>
       </form>
-      <div className="my-5 flex items-center gap-3" aria-hidden="true">
-        <span className="h-px flex-1 bg-slate-200" />
-        <span className="text-xs font-semibold text-slate-400">أو</span>
-        <span className="h-px flex-1 bg-slate-200" />
-      </div>
-      <div className="relative mx-auto flex min-h-12 w-full max-w-[400px] justify-center" dir="ltr" aria-busy={googlePending}>
-        <div ref={googleButtonRef} className={googlePending ? 'pointer-events-none opacity-60' : ''} />
-        {googlePending ? <span className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/80 text-xs font-bold text-slate-700">جارٍ تسجيل الدخول...</span> : null}
-      </div>
-      <div className="my-4 flex items-center gap-3" aria-hidden="true">
-        <span className="h-px flex-1 bg-slate-200" />
-        <span className="text-xs font-semibold text-slate-400">أو</span>
-        <span className="h-px flex-1 bg-slate-200" />
-      </div>
-      <GitHubAuthButton returnTo={returnPath} />
     </AuthLayout>
   );
 };

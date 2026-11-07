@@ -48,7 +48,6 @@ export interface CreateAccountInput {
   title: string | null;
   location: string | null;
   bio: string | null;
-  profileComplete?: boolean;
 }
 
 export const awardProfileCompletion = async (client: PoolClient, userId: string, sourceKey: string): Promise<void> => {
@@ -194,7 +193,7 @@ export const createAccount = async (input: CreateAccountInput): Promise<UserRow>
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0)
        RETURNING *`,
       [id, input.name, input.email, input.passwordHash, input.role, input.title, input.location, input.bio,
-        input.profileComplete === false ? 0 : 1,
+        1,
         input.role === 'Freelancer' ? 'PENDING_PARENT_APPROVAL' : 'ACTIVE'],
     );
     let created = result.rows[0];
@@ -205,34 +204,6 @@ export const createAccount = async (input: CreateAccountInput): Promise<UserRow>
     }
     await client.query('COMMIT');
     return created;
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
-};
-
-export const completeGoogleProfileForUser = async (
-  userId: string,
-  input: { name: string; role: Exclude<UserRole, 'Admin'>; title: string | null; location: string | null },
-): Promise<UserRow | null> => {
-  const client = await getClient();
-  try {
-    await client.query('BEGIN');
-    const result = await client.query<UserRow>(
-      `UPDATE users SET name = $1, role = $2, title = $3, location = $4, profile_complete = 1,
-          account_status = CASE WHEN $5 = 'Freelancer' THEN account_status ELSE 'ACTIVE' END
-       WHERE id = $6 AND profile_complete = 0 RETURNING *`,
-      [input.name, input.role, input.title, input.location, input.role, userId],
-    );
-    let updated = result.rows[0] ?? null;
-    if (updated?.role === 'Freelancer') {
-      await awardProfileCompletion(client, userId, `profile-complete:${userId}`);
-      updated = (await client.query<UserRow>('SELECT * FROM users WHERE id = $1', [userId])).rows[0] ?? updated;
-    }
-    await client.query('COMMIT');
-    return updated;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;

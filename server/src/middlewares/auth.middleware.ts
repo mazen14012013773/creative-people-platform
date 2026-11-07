@@ -44,12 +44,10 @@ export const authenticate = asyncHandler(async (req, _res, next) => {
     throw new AppError('تم تجميد هذا الحساب، يرجى التواصل مع الإدارة', 403);
   }
 
-  const isGoogleProfileCompletion = requestPath.endsWith('/auth/google/complete-profile') && !user.profile_complete;
   const allowedForPendingAccount = requestPath.endsWith('/auth/me') ||
     requestPath.endsWith('/parent/start-verification') ||
     requestPath.includes('/support/') ||
-    requestPath.endsWith('/realtime/stream') ||
-    isGoogleProfileCompletion;
+    requestPath.endsWith('/realtime/stream');
   if (user.role === 'Freelancer' && user.account_status !== 'ACTIVE' && !allowedForPendingAccount) {
     const message = user.account_status === 'REJECTED'
       ? 'لم يُعتمد توثيقك السابق. يمكنك إعادة إرسال طلب التوثيق ببيانات صحيحة من بوابة التوثيق.'
@@ -77,15 +75,6 @@ export const authenticate = asyncHandler(async (req, _res, next) => {
     if (revokedAt && payload.iat * 1000 <= Date.parse(revokedAt)) {
       throw new AppError('Session was revoked. Please sign in again.', 401);
     }
-  }
-
-  const allowedDuringOnboarding = requestPath.endsWith('/auth/me') ||
-    requestPath.endsWith('/auth/google/complete-profile') ||
-    requestPath.endsWith('/parent/start-verification') ||
-    requestPath.includes('/support/') ||
-    requestPath.includes('/community/posts');
-  if (!user.profile_complete && !allowedDuringOnboarding) {
-    throw new AppError('يجب إكمال بيانات الحساب أولاً', 403, { code: 'PROFILE_INCOMPLETE' });
   }
 
   req.user = {

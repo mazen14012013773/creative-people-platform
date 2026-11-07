@@ -66,25 +66,6 @@ export const loginSchema = z.object({
     .min(1, 'كلمة المرور مطلوبة'),
 });
 
-const googleProfileNameSchema = z.string().trim().min(2).max(100)
-  .transform(sanitizePlainText).pipe(z.string().min(2).max(100));
-
-export const googleProfileCompletionSchema = z.object({
-  name: googleProfileNameSchema,
-  accountType: z.enum(['Freelancer', 'Buyer', 'Parent']),
-  title: z.string().trim().max(120).transform(sanitizePlainText).optional(),
-  location: z.string().trim().max(120).transform(sanitizePlainText).optional(),
-}).superRefine((value, context) => {
-  if (value.accountType === 'Freelancer') {
-    if (!value.title || value.title.length < 2) context.addIssue({ code: 'custom', path: ['title'], message: 'المسمى الوظيفي مطلوب للمستقل' });
-    if (!value.location || value.location.length < 2) context.addIssue({ code: 'custom', path: ['location'], message: 'الموقع مطلوب للمستقل' });
-  }
-});
-
-export const googleCredentialSchema = z.object({
-  credential: z.string().min(100).max(12_000),
-});
-
 const optionalPhone = z.preprocess(
   (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
   z
@@ -124,6 +105,5 @@ export const changePasswordSchema = z
 
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
-export type GoogleProfileCompletionInput = z.infer<typeof googleProfileCompletionSchema>;
 export type AccountProfileInput = z.infer<typeof accountProfileSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

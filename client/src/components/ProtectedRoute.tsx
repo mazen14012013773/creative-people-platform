@@ -22,10 +22,6 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}${location.hash}` }} />;
   }
 
-  if (!user.profileComplete && location.pathname !== '/complete-profile') {
-    return <Navigate to="/complete-profile" replace />;
-  }
-
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to={getDashboardPath(user.role)} replace />;
   }

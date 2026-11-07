@@ -9,12 +9,10 @@ import {
   Sparkles,
   UserPlus,
 } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthLayout } from '@/components/layout/AuthLayout';
-import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
-import { GitHubAuthButton } from '@/components/auth/GitHubAuthButton';
 import { InlineLoader } from '@/components/ui/Spinner';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
@@ -23,7 +21,6 @@ import { EGYPT_GOVERNORATES } from '@/lib/constants';
 import { cn, getDashboardPath } from '@/lib/utils';
 import { registerSchema, type RegisterFormValues } from '@/lib/validation';
 import { getErrorMessage } from '@/services/api';
-import type { AuthUser } from '@/types';
 
 const ACCOUNT_TYPES = [
   {
@@ -55,7 +52,6 @@ export const RegisterPage = () => {
   const location = useLocation();
   const returnPath = (location.state as { from?: string } | null)?.from;
   const [searchParams] = useSearchParams();
-  const githubError = searchParams.get('github_error');
   const initialAccountType = searchParams.get('type') === 'parent'
     ? 'Parent'
     : searchParams.get('type') === 'buyer' ? 'Buyer' : 'Freelancer';
@@ -84,14 +80,6 @@ export const RegisterPage = () => {
 
   const accountType = watch('accountType');
   const isFreelancer = accountType === 'Freelancer';
-
-  const handleGoogleSuccess = useCallback((googleUser: AuthUser) => {
-    if (!googleUser.profileComplete) {
-      navigate('/complete-profile', { replace: true });
-      return;
-    }
-    navigate(returnPath || getDashboardPath(googleUser.role), { replace: true });
-  }, [navigate, returnPath]);
 
   if (!isLoading && user) {
     return <Navigate to={getDashboardPath(user.role)} replace />;
@@ -140,11 +128,6 @@ export const RegisterPage = () => {
       }
     >
       <form onSubmit={submit} className="space-y-5">
-        {githubError ? (
-          <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-            {githubError === 'cancelled' ? 'تم إلغاء التسجيل باستخدام GitHub.' : githubError === 'configuration' ? 'إعدادات GitHub OAuth غير مقبولة. راجع Client ID وClient Secret وعنوان Callback في إعدادات OAuth App.' : 'تعذر إكمال التسجيل عبر GitHub. حاول مرة أخرى، وإذا تكرر الخطأ راجع سجل السيرفر.'}
-          </div>
-        ) : null}
         {serverError ? (
           <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
             <p>{serverError}</p>
@@ -344,18 +327,6 @@ export const RegisterPage = () => {
           )}
         </button>
       </form>
-      <div className="my-5 flex items-center gap-3" aria-hidden="true">
-        <span className="h-px flex-1 bg-slate-200" />
-        <span className="text-xs font-semibold text-slate-400">أو أنشئ حسابك باستخدام</span>
-        <span className="h-px flex-1 bg-slate-200" />
-      </div>
-      <GoogleAuthButton onSuccess={handleGoogleSuccess} />
-      <div className="my-4 flex items-center gap-3" aria-hidden="true">
-        <span className="h-px flex-1 bg-slate-200" />
-        <span className="text-xs font-semibold text-slate-400">أو أنشئ حسابك باستخدام</span>
-        <span className="h-px flex-1 bg-slate-200" />
-      </div>
-      <GitHubAuthButton returnTo={returnPath} />
     </AuthLayout>
   );
 };

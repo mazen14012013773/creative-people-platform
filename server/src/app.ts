@@ -45,17 +45,16 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         // Keep Helmet's restrictive defaults while allowing the external
-        // resources used by the app's Google sign-in and Tajawal font.
+        // resources used by the Tajawal font and profile images.
         scriptSrc: [
           "'self'",
           "'sha256-TcY8gvnDjywvz29MMHqQwJGYG6PyTSKjFzRUZT9aNWY='",
           "'sha256-a0jyf5He2QRzDQtwu6T69pbSLNfx2xxe+SKdfV2CeWY='",
-          'https://accounts.google.com',
         ],
         styleSrc: ["'self'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
-        connectSrc: ["'self'", 'https://fonts.googleapis.com', 'https://accounts.google.com'],
-        imgSrc: ["'self'", 'data:', 'blob:', 'https://accounts.google.com', 'https://*.googleusercontent.com'],
+        connectSrc: ["'self'", 'https://fonts.googleapis.com'],
+        imgSrc: ["'self'", 'data:', 'blob:', 'https://*.googleusercontent.com'],
         frameSrc: ["'self'", 'https:', 'http:'],
       },
     },
