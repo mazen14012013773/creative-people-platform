@@ -5,12 +5,12 @@
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS skills (
-  id TEXT PRIMARY KEY NOT NULL,
+  id UUID PRIMARY KEY NOT NULL,
   name TEXT NOT NULL UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS users (
-  id TEXT PRIMARY KEY NOT NULL,
+  id UUID PRIMARY KEY NOT NULL,
   name TEXT NOT NULL CHECK (length(trim(name)) >= 2),
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
@@ -42,10 +42,32 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 , points_balance INTEGER NOT NULL DEFAULT 0 CHECK (points_balance >= 0), account_suspended_until TEXT, parent_email TEXT, is_deleted INTEGER NOT NULL DEFAULT 0 CHECK (is_deleted IN (0, 1)), deleted_at TEXT, is_private INTEGER NOT NULL DEFAULT 0 CHECK (is_private IN (0, 1)));
 
+-- Align legacy tables from the first Supabase migration with the application schema.
+ALTER TABLE users ALTER COLUMN role TYPE TEXT USING role::text;
+ALTER TABLE users ALTER COLUMN role SET DEFAULT 'Freelancer';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS parent_phone TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS parent_photo TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS parent_approval_token TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS account_status TEXT NOT NULL DEFAULT 'ACTIVE';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS github_url TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS linkedin_url TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS website_url TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_available INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS featured_until TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avg_response_hours REAL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS token_invalid_before TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_complete INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS points_balance INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS account_suspended_until TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS parent_email TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_deleted INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_private INTEGER NOT NULL DEFAULT 0;
 CREATE TABLE IF NOT EXISTS account_reports (
   id TEXT PRIMARY KEY NOT NULL,
-  reporter_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-  reported_user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  reporter_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  reported_user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   reason_category TEXT NOT NULL CHECK (reason_category IN ('FRAUD', 'INAPPROPRIATE', 'IMPERSONATION', 'NONCOMPLIANCE', 'OTHER')),
   description TEXT NOT NULL CHECK (length(trim(description)) BETWEEN 10 AND 4000),
   proof_files TEXT NOT NULL DEFAULT '[]',
@@ -58,7 +80,7 @@ CREATE TABLE IF NOT EXISTS account_reports (
 
 CREATE TABLE IF NOT EXISTS admin_audit_logs (
   id TEXT PRIMARY KEY NOT NULL,
-  admin_id TEXT REFERENCES users (id) ON DELETE SET NULL,
+  admin_id UUID REFERENCES users (id) ON DELETE SET NULL,
   action TEXT NOT NULL,
   subject_type TEXT NOT NULL,
   subject_id TEXT NOT NULL,
@@ -70,7 +92,7 @@ CREATE TABLE IF NOT EXISTS admin_audit_logs (
 CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY NOT NULL,
   value TEXT NOT NULL,
-  updated_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  updated_by UUID REFERENCES users (id) ON DELETE SET NULL,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -86,7 +108,7 @@ CREATE TABLE IF NOT EXISTS articles (
   author_avatar TEXT,
   published_at TEXT NOT NULL,
   read_time INTEGER NOT NULL CHECK (read_time > 0)
-, author_id TEXT REFERENCES users (id) ON DELETE SET NULL, status TEXT NOT NULL DEFAULT 'PUBLISHED' CHECK (status IN ('PUBLISHED', 'HIDDEN')));
+, author_id UUID REFERENCES users (id) ON DELETE SET NULL, status TEXT NOT NULL DEFAULT 'PUBLISHED' CHECK (status IN ('PUBLISHED', 'HIDDEN')));
 
 CREATE TABLE IF NOT EXISTS banners (
   id TEXT PRIMARY KEY NOT NULL,
@@ -105,7 +127,7 @@ CREATE TABLE IF NOT EXISTS banners (
   ends_at TEXT,
   impression_count INTEGER NOT NULL DEFAULT 0,
   click_count INTEGER NOT NULL DEFAULT 0,
-  created_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  created_by UUID REFERENCES users (id) ON DELETE SET NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -115,9 +137,9 @@ CREATE TABLE IF NOT EXISTS community_posts (
   title TEXT NOT NULL CHECK (length(trim(title)) BETWEEN 3 AND 160),
   content TEXT NOT NULL CHECK (length(trim(content)) BETWEEN 20 AND 12000),
   cover_image TEXT,
-  author_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  author_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   author_role TEXT NOT NULL CHECK (author_role IN ('FREELANCER', 'CLIENT', 'ADMIN')),
-  category TEXT NOT NULL CHECK (category IN ('ØªØ¬Ø±Ø¨ØªÙŠ', 'Ø¯Ø±Ø³ Ø¨Ø±Ù…Ø¬Ø©', 'Ù…Ø´Ø±ÙˆØ¹ÙŠ', 'Ù†ØµØ§Ø¦Ø­', 'Ø£Ø®Ø±Ù‰')),
+  category TEXT NOT NULL CHECK (category IN ('Ã˜ÂªÃ˜Â¬Ã˜Â±Ã˜Â¨Ã˜ÂªÃ™Å ', 'Ã˜Â¯Ã˜Â±Ã˜Â³ Ã˜Â¨Ã˜Â±Ã™â€¦Ã˜Â¬Ã˜Â©', 'Ã™â€¦Ã˜Â´Ã˜Â±Ã™Ë†Ã˜Â¹Ã™Å ', 'Ã™â€ Ã˜ÂµÃ˜Â§Ã˜Â¦Ã˜Â­', 'Ã˜Â£Ã˜Â®Ã˜Â±Ã™â€°')),
   status TEXT NOT NULL DEFAULT 'PUBLISHED' CHECK (status IN ('PUBLISHED', 'DRAFT')),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   views_count INTEGER NOT NULL DEFAULT 0 CHECK (views_count >= 0),
@@ -127,21 +149,21 @@ CREATE TABLE IF NOT EXISTS community_posts (
 CREATE TABLE IF NOT EXISTS ip_blocks (
   ip TEXT PRIMARY KEY NOT NULL,
   reason TEXT NOT NULL DEFAULT '',
-  created_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  created_by UUID REFERENCES users (id) ON DELETE SET NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   expires_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS moderation_flags (
   id TEXT PRIMARY KEY NOT NULL,
-  user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   field TEXT NOT NULL,
   rule TEXT NOT NULL,
   severity TEXT NOT NULL CHECK (severity IN ('low', 'medium', 'high')),
   excerpt TEXT NOT NULL,
   suggestion TEXT,
   status TEXT NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending', 'Resolved', 'Dismissed')),
-  resolved_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  resolved_by UUID REFERENCES users (id) ON DELETE SET NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   resolved_at TEXT
 );
@@ -151,23 +173,23 @@ CREATE TABLE IF NOT EXISTS notifications (
   title TEXT NOT NULL,
   message TEXT NOT NULL,
   is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
-  created_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  created_by UUID REFERENCES users (id) ON DELETE SET NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS parent_access_logs (
   id TEXT PRIMARY KEY NOT NULL,
-  parent_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-  child_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  parent_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  child_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   action TEXT NOT NULL CHECK (action IN ('VIEW_CONVERSATIONS', 'VIEW_MESSAGES')),
-  peer_id TEXT REFERENCES users (id) ON DELETE SET NULL,
+  peer_id UUID REFERENCES users (id) ON DELETE SET NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS parent_child_links (
   id TEXT PRIMARY KEY NOT NULL,
-  parent_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-  child_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  parent_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  child_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   responded_at TEXT, chat_access_enabled INTEGER NOT NULL DEFAULT 0 CHECK (chat_access_enabled IN (0, 1)), parent_display_name TEXT, parent_avatar_data_url TEXT,
@@ -176,7 +198,7 @@ CREATE TABLE IF NOT EXISTS parent_child_links (
 
 CREATE TABLE IF NOT EXISTS parent_verifications (
   id TEXT PRIMARY KEY NOT NULL,
-  child_id TEXT NOT NULL UNIQUE REFERENCES users (id) ON DELETE CASCADE,
+  child_id UUID NOT NULL UNIQUE REFERENCES users (id) ON DELETE CASCADE,
   parent_phone TEXT NOT NULL,
   token_hash TEXT NOT NULL UNIQUE,
   challenge_a INTEGER NOT NULL,
@@ -186,12 +208,12 @@ CREATE TABLE IF NOT EXISTS parent_verifications (
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   submitted_at TEXT,
   reviewed_at TEXT,
-  reviewed_by TEXT REFERENCES users (id) ON DELETE SET NULL
+  reviewed_by UUID REFERENCES users (id) ON DELETE SET NULL
 , otp_hash TEXT, otp_expires_at TEXT, otp_attempts INTEGER NOT NULL DEFAULT 0, parent_email TEXT);
 
 CREATE TABLE IF NOT EXISTS passkeys (
   id TEXT PRIMARY KEY NOT NULL,
-  user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   credential_id TEXT NOT NULL UNIQUE,
   public_key TEXT NOT NULL,
   counter INTEGER NOT NULL DEFAULT 0,
@@ -201,14 +223,14 @@ CREATE TABLE IF NOT EXISTS passkeys (
   backed_up INTEGER NOT NULL DEFAULT 0 CHECK (backed_up IN (0, 1)),
   aaguid TEXT,
   origin TEXT NOT NULL DEFAULT '',
-  label TEXT NOT NULL DEFAULT 'Ø¨ØµÙ…Ø©',
+  label TEXT NOT NULL DEFAULT 'Ã˜Â¨Ã˜ÂµÃ™â€¦Ã˜Â©',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   last_used_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS points_history (
   id TEXT PRIMARY KEY NOT NULL,
-  user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   amount INTEGER NOT NULL CHECK (amount <> 0),
   reason TEXT NOT NULL,
   source_key TEXT UNIQUE,
@@ -217,14 +239,14 @@ CREATE TABLE IF NOT EXISTS points_history (
 
 CREATE TABLE IF NOT EXISTS points_test_funds (
   id TEXT PRIMARY KEY NOT NULL,
-  user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   amount INTEGER NOT NULL CHECK (amount > 0 AND amount <= 10000),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS portfolio_items (
   id TEXT PRIMARY KEY NOT NULL,
-  user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
   image_url TEXT,
@@ -234,14 +256,14 @@ CREATE TABLE IF NOT EXISTS portfolio_items (
 
 CREATE TABLE IF NOT EXISTS profile_events (
   id SERIAL PRIMARY KEY,
-  freelancer_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  freelancer_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   event_type TEXT NOT NULL CHECK (event_type IN ('View', 'WhatsAppClick')),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS reports (
       id TEXT PRIMARY KEY NOT NULL,
-      freelancer_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+      freelancer_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
       reason TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending', 'Resolved', 'Dismissed')),
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -249,7 +271,7 @@ CREATE TABLE IF NOT EXISTS reports (
 
 CREATE TABLE IF NOT EXISTS services (
   id TEXT PRIMARY KEY NOT NULL,
-  freelancer_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  freelancer_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT NOT NULL,
   price REAL NOT NULL CHECK (price >= 0),
@@ -260,7 +282,7 @@ CREATE TABLE IF NOT EXISTS services (
 
 CREATE TABLE IF NOT EXISTS support_tickets (
   id TEXT PRIMARY KEY NOT NULL,
-  user_id TEXT REFERENCES users (id) ON DELETE SET NULL,
+  user_id UUID REFERENCES users (id) ON DELETE SET NULL,
   guest_email TEXT,
   subject TEXT NOT NULL CHECK (length(trim(subject)) BETWEEN 3 AND 120),
   status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'CLOSED')),
@@ -271,7 +293,7 @@ CREATE TABLE IF NOT EXISTS support_tickets (
 
 CREATE TABLE IF NOT EXISTS user_notifications (
       id TEXT PRIMARY KEY NOT NULL,
-      user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
       type TEXT NOT NULL CHECK (type IN ('NEW_MESSAGE', 'NEW_REVIEW', 'ACCOUNT_STATUS', 'NEW_REPORT', 'ADMIN_ANNOUNCEMENT', 'NEW_POST_COMMENT', 'NEW_POST_LIKE', 'PARENT_LINK_REQUEST', 'REWARD_EARNED', 'BADGE_EARNED', 'NEW_ORDER', 'ORDER_UPDATE')),
       title TEXT NOT NULL,
       message TEXT NOT NULL,
@@ -283,7 +305,7 @@ CREATE TABLE IF NOT EXISTS user_notifications (
 CREATE TABLE IF NOT EXISTS user_sessions (
   id SERIAL PRIMARY KEY,
   session_key TEXT NOT NULL UNIQUE,
-  user_id TEXT REFERENCES users (id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users (id) ON DELETE CASCADE,
   ip TEXT NOT NULL,
   user_agent TEXT NOT NULL DEFAULT '',
   agent_hash TEXT NOT NULL,
@@ -294,7 +316,7 @@ CREATE TABLE IF NOT EXISTS user_sessions (
 );
 
 CREATE TABLE IF NOT EXISTS user_skills (
-  user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   skill_id TEXT NOT NULL REFERENCES skills (id) ON DELETE CASCADE,
   PRIMARY KEY (user_id, skill_id)
 );
@@ -309,8 +331,8 @@ CREATE TABLE IF NOT EXISTS banner_events (
 
 CREATE TABLE IF NOT EXISTS messages (
   id TEXT PRIMARY KEY NOT NULL,
-  sender_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-  receiver_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  sender_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  receiver_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   service_id TEXT REFERENCES services (id) ON DELETE SET NULL,
   content TEXT NOT NULL CHECK (length(trim(content)) BETWEEN 1 AND 2000),
   is_read INTEGER NOT NULL DEFAULT 0 CHECK (is_read IN (0, 1)),
@@ -321,8 +343,8 @@ CREATE TABLE IF NOT EXISTS messages (
 CREATE TABLE IF NOT EXISTS orders (
         id TEXT PRIMARY KEY NOT NULL,
         service_id TEXT NOT NULL REFERENCES services (id) ON DELETE RESTRICT,
-        buyer_id TEXT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
-        freelancer_id TEXT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+        buyer_id UUID NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+        freelancer_id UUID NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
         price_amount REAL NOT NULL DEFAULT 0 CHECK (price_amount >= 0),
         status TEXT NOT NULL CHECK (status IN ('PENDING', 'IN_PROGRESS', 'DELIVERED', 'REVISION_REQUESTED', 'AWAITING_REVIEW', 'COMPLETED', 'CANCELLED')),
         delivery_version INTEGER NOT NULL DEFAULT 0 CHECK (delivery_version >= 0),
@@ -336,12 +358,12 @@ CREATE TABLE IF NOT EXISTS post_comments (
   id TEXT PRIMARY KEY NOT NULL,
   post_id TEXT REFERENCES community_posts (id) ON DELETE CASCADE,
   article_id TEXT REFERENCES articles (id) ON DELETE CASCADE,
-  user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   content TEXT NOT NULL DEFAULT '' CHECK (length(trim(content)) <= 2000),
   attachment_url TEXT,
   attachment_type TEXT CHECK (attachment_type IS NULL OR attachment_type IN ('IMAGE', 'VIDEO', 'FILE')),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CHECK ((post_id IS NOT NULL) + (article_id IS NOT NULL) = 1),
+  CHECK ((post_id IS NOT NULL) <> (article_id IS NOT NULL)),
   CHECK (length(trim(content)) > 0 OR attachment_url IS NOT NULL),
   CHECK ((attachment_url IS NULL) = (attachment_type IS NULL))
 );
@@ -350,16 +372,16 @@ CREATE TABLE IF NOT EXISTS post_likes (
   id TEXT PRIMARY KEY NOT NULL,
   post_id TEXT REFERENCES community_posts (id) ON DELETE CASCADE,
   article_id TEXT REFERENCES articles (id) ON DELETE CASCADE,
-  user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CHECK ((post_id IS NOT NULL) + (article_id IS NOT NULL) = 1)
+  CHECK ((post_id IS NOT NULL) <> (article_id IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS support_messages (
   id TEXT PRIMARY KEY NOT NULL,
   ticket_id TEXT NOT NULL REFERENCES support_tickets (id) ON DELETE CASCADE,
   sender_type TEXT NOT NULL CHECK (sender_type IN ('USER', 'ADMIN')),
-  sender_id TEXT REFERENCES users (id) ON DELETE SET NULL,
+  sender_id UUID REFERENCES users (id) ON DELETE SET NULL,
   message TEXT NOT NULL DEFAULT '' CHECK (length(message) <= 4000),
   attachment_url TEXT,
   attachment_type TEXT CHECK (attachment_type IS NULL OR attachment_type IN ('IMAGE', 'VIDEO', 'FILE')),
@@ -386,14 +408,14 @@ CREATE TABLE IF NOT EXISTS order_deliveries (
 CREATE TABLE IF NOT EXISTS order_events (
   id TEXT PRIMARY KEY NOT NULL,
   order_id TEXT NOT NULL REFERENCES orders (id) ON DELETE CASCADE,
-  actor_id TEXT REFERENCES users (id) ON DELETE SET NULL,
+  actor_id UUID REFERENCES users (id) ON DELETE SET NULL,
   event_type TEXT NOT NULL,
   details TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS order_idempotency_keys (
-  user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   idempotency_key TEXT NOT NULL,
   order_id TEXT NOT NULL REFERENCES orders (id) ON DELETE CASCADE,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -403,14 +425,14 @@ CREATE TABLE IF NOT EXISTS order_idempotency_keys (
 CREATE TABLE IF NOT EXISTS order_messages (
   id TEXT PRIMARY KEY NOT NULL,
   order_id TEXT NOT NULL REFERENCES orders (id) ON DELETE CASCADE,
-  sender_id TEXT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  sender_id UUID NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
   content TEXT NOT NULL CHECK (length(trim(content)) BETWEEN 1 AND 4000),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS points_ledger (
   id TEXT PRIMARY KEY NOT NULL,
-  user_id TEXT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  user_id UUID NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
   order_id TEXT NOT NULL REFERENCES orders (id) ON DELETE RESTRICT,
   entry_type TEXT NOT NULL CHECK (entry_type IN ('ESCROW_HOLD', 'ESCROW_RELEASE', 'ESCROW_REFUND')),
   amount INTEGER NOT NULL CHECK (amount > 0),
@@ -419,14 +441,18 @@ CREATE TABLE IF NOT EXISTS points_ledger (
 );
 
 CREATE TABLE IF NOT EXISTS reviews (
-  id TEXT PRIMARY KEY NOT NULL,
-  freelancer_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY NOT NULL,
+  freelancer_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   client_name TEXT NOT NULL,
   rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
   comment TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-, order_id TEXT REFERENCES orders (id) ON DELETE SET NULL, buyer_id TEXT REFERENCES users (id) ON DELETE SET NULL, freelancer_reply TEXT, replied_at TEXT);
+, order_id TEXT REFERENCES orders (id) ON DELETE SET NULL, buyer_id UUID REFERENCES users (id) ON DELETE SET NULL, freelancer_reply TEXT, replied_at TEXT);
 
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS order_id TEXT REFERENCES orders (id) ON DELETE SET NULL;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS buyer_id UUID REFERENCES users (id) ON DELETE SET NULL;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS freelancer_reply TEXT;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS replied_at TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_account_reports_one_pending ON account_reports (reporter_id, reported_user_id) WHERE status = 'PENDING';
 
 CREATE INDEX IF NOT EXISTS idx_account_reports_reported ON account_reports (reported_user_id, created_at DESC);
@@ -546,7 +572,8 @@ CREATE INDEX IF NOT EXISTS idx_users_name ON users (name);
 CREATE INDEX IF NOT EXISTS idx_users_verified
   ON users (is_verified, is_active, is_featured DESC);
 
-CREATE OR REPLACE VIEW freelancer_stats AS
+DROP VIEW IF EXISTS freelancer_stats;
+CREATE VIEW freelancer_stats AS
 SELECT
   u.id AS freelancer_id,
   (SELECT COUNT(*) FROM reviews r WHERE r.freelancer_id = u.id) AS review_count,
@@ -589,4 +616,5 @@ CREATE TRIGGER trg_users_profile_completion BEFORE INSERT OR UPDATE OF name, rol
 FOR EACH ROW EXECUTE FUNCTION mabdeen_sync_profile_complete();
 
 COMMIT;
+
 
