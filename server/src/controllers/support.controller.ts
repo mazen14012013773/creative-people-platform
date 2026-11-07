@@ -26,7 +26,7 @@ export const ticketAttachment = async (req: Request, res: Response): Promise<voi
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Content-Type', attachment.mimeType);
   res.setHeader('Cache-Control', 'private, no-store');
-  res.download(attachment.filePath, attachment.name, (error) => { if (error && !res.headersSent) res.status(404).end(); });
+  res.redirect(302, attachment.url);
 };
 
 export const adminTickets = async (req: Request, res: Response): Promise<void> => {

@@ -1,6 +1,3 @@
-import { existsSync } from 'node:fs';
-import path from 'node:path';
-import { privateVaultDir } from '../config/paths';
 import { recordAdminAudit } from '../models/admin.model';
 import {
   deleteAdminContentComment,
@@ -24,7 +21,7 @@ import {
   unlinkAdminFamilyLink,
   type AdminAllConversationsFilters,
 } from '../models/admin-inspection.model';
-import { deleteLocalImage, resolveChatAttachmentPath } from './upload.service';
+import { deleteLocalImage, getPrivateFileUrl } from './upload.service';
 import { emitRealtimeEventToAll } from './realtime.service';
 import { buildPagination } from '../utils/pagination';
 import { AppError } from '../utils/app-error';
@@ -65,8 +62,6 @@ export const getChatAttachmentFile = async (
   const attachment = await findAdminChatAttachment(messageId);
   if (!attachment) throw new AppError('المرفق غير موجود', 404);
 
-  const filePath = resolveChatAttachmentPath(attachment.storageKey);
-  if (!existsSync(filePath)) throw new AppError('ملف المرفق لم يعد متاحًا على الخادم', 404);
 
   await recordAdminAudit(adminId, 'view_chat_attachment', 'chat_attachment', messageId, reason, {
     name: attachment.name,
@@ -78,7 +73,7 @@ export const getChatAttachmentFile = async (
   });
 
   return {
-    filePath,
+    url: await getPrivateFileUrl(attachment.storageKey, attachment.name),
     name: attachment.name,
     mimeType: attachment.mimeType,
     sha256: '',
@@ -120,13 +115,6 @@ export const getOrderVaultFile = async (
   const file = await findAdminVaultFile(orderId, deliveryId);
   if (!file) throw new AppError('ملف التسليم غير موجود لهذا الطلب', 404);
 
-  const filePath = path.resolve(privateVaultDir, file.storagePath);
-  if (!filePath.startsWith(`${privateVaultDir}${path.sep}`)) {
-    throw new AppError('مسار الملف غير صالح', 400);
-  }
-
-  if (!existsSync(filePath)) throw new AppError('ملف التسليم غير متاح على الخادم', 404);
-
   await recordAdminAudit(adminId, 'view_order_vault_file', 'order', orderId, reason, {
     deliveryId,
     name: file.name,
@@ -136,7 +124,7 @@ export const getOrderVaultFile = async (
   });
 
   return {
-    filePath,
+    url: await getPrivateFileUrl(file.storagePath, download ? file.name : undefined),
     name: file.name,
     mimeType: file.mimeType,
     sha256: file.sha256,

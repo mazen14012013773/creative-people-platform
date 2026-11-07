@@ -24,5 +24,5 @@ export const accountReportEvidence = async (req: Request, res: Response): Promis
   res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox; frame-ancestors 'none'");
   res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(file.name)}`);
   res.setHeader('Content-Type', file.mimeType === 'text/plain' ? 'text/plain; charset=utf-8' : file.mimeType);
-  res.sendFile(file.filePath, (error) => { if (error && !res.headersSent) res.status(404).end(); });
+  res.redirect(302, file.url);
 };

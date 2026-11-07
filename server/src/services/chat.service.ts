@@ -3,7 +3,7 @@ import { findAttachmentForParticipant, insertMessage, listConversations, listMes
 import { findUserById } from '../models/user.model';
 import { createUserNotification } from '../models/notification.model';
 import { emitRealtimeEvent } from './realtime.service';
-import { deleteChatAttachment, resolveChatAttachmentPath, saveChatAttachment } from './upload.service';
+import { deleteChatAttachment, getPrivateFileUrl, saveChatAttachment } from './upload.service';
 import type { Express } from 'express';
 import { existsSync } from 'node:fs';
 import type { ChatConversation, ChatMessage } from '../types/chat';
@@ -88,7 +88,6 @@ export const sendChatMessage = async (
 export const getChatAttachment = async (messageId: string, userId: string) => {
   const attachment = await findAttachmentForParticipant(messageId, userId);
   if (!attachment) throw new AppError('الملف غير موجود أو ليس لديك صلاحية لعرضه.', 404);
-  const filePath = resolveChatAttachmentPath(attachment.attachment_storage_key);
-  if (!existsSync(filePath)) throw new AppError('الملف لم يعد متاحًا.', 404);
-  return { filePath, name: attachment.attachment_name, mimeType: attachment.attachment_mime };
+  const url = await getPrivateFileUrl(attachment.attachment_storage_key, attachment.attachment_name);
+  return { url, name: attachment.attachment_name, mimeType: attachment.attachment_mime };
 };

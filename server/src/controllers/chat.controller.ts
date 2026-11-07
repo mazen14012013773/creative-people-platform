@@ -20,7 +20,5 @@ export const send = async (req: Request, res: Response): Promise<void> => {
 export const attachment = async (req: Request, res: Response): Promise<void> => {
   const file = await getChatAttachment(String(req.params.id), req.user!.id);
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.download(file.filePath, file.name, (error) => {
-    if (error && !res.headersSent) res.status(404).end();
-  });
+  res.redirect(302, file.url);
 };

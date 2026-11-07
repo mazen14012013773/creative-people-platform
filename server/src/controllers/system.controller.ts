@@ -217,7 +217,7 @@ export const restore = async (req: Request, res: Response): Promise<void> => {
   }
 
   const { reason } = req.body as RestoreBackupInput;
-  const result = await restoreBackup(req.user!.id, req.file.path, reason);
+  const result = await restoreBackup(req.user!.id, req.file.buffer, reason);
 
   res.status(200).json({
     success: true,

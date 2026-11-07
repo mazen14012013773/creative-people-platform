@@ -11,6 +11,7 @@ const envSchema = z.object({
   SUPABASE_URL: z.string().url().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().trim().optional(),
   SUPABASE_STORAGE_BUCKET: z.string().trim().min(1).default('mabdeen-files'),
+  SUPABASE_PRIVATE_STORAGE_BUCKET: z.string().trim().min(1).default('mabdeen-private'),
   UPLOAD_DIR: z.string().min(1).default('./uploads'),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   JWT_EXPIRES_IN: z.string().min(1).default('7d'),

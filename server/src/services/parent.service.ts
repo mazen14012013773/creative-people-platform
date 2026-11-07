@@ -1,20 +1,19 @@
 import { createHash, randomInt, randomUUID } from 'node:crypto';
-import { existsSync } from 'node:fs';
-import { copyFile, mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { query } from '../config/db';
 import { env } from '../config/env';
-import { privateParentVerificationDir } from '../config/paths';
 import { createUserNotification } from '../models/notification.model';
 import { approveParentVerificationByToken, createParentLink, createParentVerification, findChildByEmail, findParentById, findParentVerificationByToken, findParentVerificationPhoto, getChildLinkRequests, listLinkedChildren, listParentVerifications, markAccountVerificationPending, respondToParentLink, reviewParentVerification, type ParentLinkRow, linkedParentsForChild, parentHasChatConsent, recordParentAccess, getChildParentAccessLog, getChildConversations, getChildConversationMessages, findLinkedChildMessageAttachment, approveLinkedParentChatAccess, updateLinkedChildDisplay } from '../models/parent.model';
 import { findUserById } from '../models/user.model';
 import { recordAdminAudit } from '../models/admin.model';
 import { AppError } from '../utils/app-error';
 import { buildPagination } from '../utils/pagination';
-import { matchesFileSignatureFromPath } from '../utils/file-signature';
+import { matchesFileSignature } from '../utils/file-signature';
 import { emitRealtimeEvent } from './realtime.service';
 import { isEmailDeliveryConfigured, sendParentVerificationDecisionEmail, sendParentVerificationEmail } from './email.service';
-import { resolveChatAttachmentPath } from './upload.service';
+import { getPrivateFileUrl } from './upload.service';
+import { createPrivateFileUrl, uploadPrivateFile, uploadPublicFile } from './storage.service';
+import { IMAGE_MIME_EXTENSIONS } from '../config/upload-rules';
 
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
@@ -62,9 +61,8 @@ export const updateParentChildDisplay = async (parentId: string, childId: string
   let avatarDataUrl: string | undefined;
   if (file) {
     if (file.size > 1024 * 1024) throw new AppError('يجب ألا يتجاوز حجم الصورة 1 ميجابايت', 413);
-    if (!matchesFileSignatureFromPath(file.path, file.mimetype)) throw new AppError('ملف الصورة غير صالح. استخدم JPG أو PNG أو WebP أو GIF.', 400);
-    const bytes = await readFile(file.path);
-    avatarDataUrl = `data:${file.mimetype};base64,${bytes.toString('base64')}`;
+    if (!matchesFileSignature(file.buffer, file.mimetype)) throw new AppError("Invalid image contents", 400);
+    avatarDataUrl = await uploadPublicFile(`avatars/children/${childId}/${randomUUID()}.${IMAGE_MIME_EXTENSIONS[file.mimetype]}`, file.buffer, file.mimetype);
   }
 
   const updated = await updateLinkedChildDisplay(parentId, childId, displayName, avatarDataUrl);
@@ -106,9 +104,8 @@ export const parentChildMessageAttachment = async (parentId: string, childId: st
   const attachment = await findLinkedChildMessageAttachment(messageId, childId);
   if (!attachment) throw new AppError('Attachment was not found for this linked account', 404);
   await recordParentAccess(parentId, childId, 'VIEW_MESSAGES', attachment.senderId === childId ? attachment.receiverId : attachment.senderId);
-  const filePath = resolveChatAttachmentPath(attachment.storageKey);
-  if (!existsSync(filePath)) throw new AppError('Attachment is no longer available', 404);
-  return { filePath, name: attachment.name, mimeType: attachment.mimeType };
+  const url = await getPrivateFileUrl(attachment.storageKey, attachment.name);
+  return { url, name: attachment.name, mimeType: attachment.mimeType };
 };
 
 export const startParentVerification = async (childId: string, emailInput: string) => {
@@ -160,11 +157,9 @@ const saveParentPhoto = async (file?: Express.Multer.File): Promise<string> => {
   if (!file) throw new AppError('التقط صورة شخصية واضحة لولي الأمر لإكمال التوثيق', 422);
   const extension = PARENT_PHOTO_EXTENSIONS[file.mimetype];
   if (!extension) throw new AppError('ارفع صورة JPG أو PNG أو WebP بحجم لا يتجاوز 3 ميجابايت', 400);
-  if (!matchesFileSignatureFromPath(file.path, file.mimetype)) throw new AppError('محتوى الصورة لا يطابق نوع الملف', 400);
-  await mkdir(privateParentVerificationDir, { recursive: true });
+  if (!matchesFileSignature(file.buffer, file.mimetype)) throw new AppError("Invalid image contents", 400);
   const fileName = `${randomUUID()}.${extension}`;
-  await copyFile(file.path, path.join(privateParentVerificationDir, fileName));
-  return fileName;
+  return uploadPrivateFile(`parent-verifications/${fileName}`, file.buffer, file.mimetype);
 };
 
 export const approveParentVerification = async (token: string, mathAnswer: number, file?: Express.Multer.File) => {
@@ -191,11 +186,9 @@ export const adminParentVerificationQueue = async (input: { page: number; limit:
 export const adminParentVerificationPhoto = async (id: string) => {
   const row = await findParentVerificationPhoto(id);
   if (!row?.photoPath) throw new AppError('لا توجد صورة مرفقة بهذا الطلب', 404);
-  const filePath = path.join(privateParentVerificationDir, path.basename(row.photoPath));
-  if (!existsSync(filePath)) throw new AppError('الصورة لم تعد متاحة', 404);
-  const extension = path.extname(filePath).slice(1).toLowerCase();
+  const extension = path.extname(row.photoPath).slice(1).toLowerCase();
   const mimeType = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
-  return { filePath, mimeType };
+  return { url: await createPrivateFileUrl(row.photoPath), mimeType };
 };
 
 export const reviewParentVerificationRequest = async (

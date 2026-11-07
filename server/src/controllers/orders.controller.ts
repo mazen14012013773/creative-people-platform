@@ -77,9 +77,8 @@ export const download = async (req: Request, res: Response): Promise<void> => {
   res.setHeader('Cache-Control', 'private, no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Content-Type', file.mimeType);
-  res.download(file.filePath, file.name, (error) => {
-    if (error && !res.headersSent) res.status(404).end();
-  });
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(file.name)}`);
+  res.send(file.buffer);
 };
 
 export const previewDelivery = async (req: Request, res: Response): Promise<void> => {
@@ -91,7 +90,7 @@ export const previewDelivery = async (req: Request, res: Response): Promise<void
     : "default-src 'none'; sandbox; frame-ancestors 'none'");
   res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(file.name)}`);
   res.setHeader('Content-Type', file.mimeType === 'text/html' ? 'text/html; charset=utf-8' : ['text/plain', 'text/uri-list', 'application/json'].includes(file.mimeType) ? 'text/plain; charset=utf-8' : file.mimeType);
-  res.sendFile(file.filePath, (error) => { if (error && !res.headersSent) res.status(404).end(); });
+  res.send(file.buffer);
 };
 
 export const downloadAll = async (req: Request, res: Response): Promise<void> => {
@@ -106,6 +105,6 @@ export const downloadAll = async (req: Request, res: Response): Promise<void> =>
   archive.on('warning', (error: Error) => res.destroy(error));
   archive.on('error', (error: Error) => res.destroy(error));
   archive.pipe(res);
-  for (const file of files) archive.file(file.filePath, { name: file.archivePath });
+  for (const file of files) archive.append(file.buffer, { name: file.archivePath });
   await archive.finalize();
 };

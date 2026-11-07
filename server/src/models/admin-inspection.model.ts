@@ -1,7 +1,4 @@
-import { existsSync } from 'node:fs';
-import path from 'node:path';
 import { query } from '../config/db';
-import { privateParentVerificationDir } from '../config/paths';
 import { getAdminOrderDetail, getAdminUserById } from './admin.model';
 import { listSessions } from './system.model';
 import type {
@@ -635,7 +632,7 @@ export const getAdminUserDossier = async (userId: string)=> {
       parentEmail: row.parent_email,
       parentPhone: row.parent_phone,
       status: row.status,
-      hasPhoto: Boolean(row.parent_photo_path && existsSync(path.join(privateParentVerificationDir, path.basename(row.parent_photo_path)))),
+      hasPhoto: Boolean(row.parent_photo_path),
       createdAt: row.created_at,
       submittedAt: row.submitted_at,
       reviewedAt: row.reviewed_at,

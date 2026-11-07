@@ -9,6 +9,12 @@ import { emitRealtimeEventToAll } from './realtime.service';
 import { hasPostLike } from '../models/post-interaction.model';
 import { addPostComment, getPostComments, toggleLike } from './post-interactions.service';
 import type { CommunityPostInput, CommunityPostUpdateInput } from '../validators/community-post.validator';
+import { env } from '../config/env';
+
+const isOwnedCommunityImage = (url: string, userId: string): boolean => {
+  try { return new URL(url).pathname.includes(`/storage/v1/object/public/${env.SUPABASE_STORAGE_BUCKET}/community/${userId}/`); }
+  catch { return false; }
+};
 
 const clean = (text: string, field: string): string => {
   const moderation = moderateText(text);
@@ -47,7 +53,7 @@ export const togglePostLike = (postId: string, user: { id: string; name: string 
 };
 
 export const addCommunityPost = async (author: { id: string; role: UserRole }, input: CommunityPostInput) => {
-  if (input.coverImage && !input.coverImage.startsWith(`/uploads/community/${author.id}/`)) {
+  if (input.coverImage && !isOwnedCommunityImage(input.coverImage, author.id)) {
     throw new AppError('يجب اختيار صورة الغلاف من خلال أداة رفع الصور.', 400);
   }
   const post = await createCommunityPost({
@@ -62,7 +68,7 @@ export const addCommunityPost = async (author: { id: string; role: UserRole }, i
 export const editCommunityPost = async (id: string, authorId: string, input: CommunityPostUpdateInput, canManageAny = false) => {
   const current = await findCommunityPost(id);
   if (!current || (!canManageAny && current.authorId !== authorId)) throw new AppError('المنشور غير موجود أو لا تملك صلاحية تعديله', 404);
-  if (input.coverImage && !input.coverImage.startsWith(`/uploads/community/${current.authorId}/`)) {
+  if (input.coverImage && !isOwnedCommunityImage(input.coverImage, current.authorId)) {
     throw new AppError('يجب اختيار صورة الغلاف من خلال أداة رفع الصور.', 400);
   }
   const updated = await updateCommunityPost(id, authorId, {

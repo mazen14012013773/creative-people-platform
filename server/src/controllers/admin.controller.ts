@@ -83,7 +83,7 @@ import type {
 
 const sendProtectedFile = (
   res: Response,
-  file: { filePath: string; name: string; mimeType: string; sha256?: string },
+  file: { url: string; name: string; mimeType: string; sha256?: string },
   download: boolean,
 ): void => {
   res.setHeader('Cache-Control', 'private, no-store');
@@ -94,7 +94,7 @@ const sendProtectedFile = (
   );
   if (file.sha256) res.setHeader('X-File-Sha256', file.sha256);
   res.type(file.mimeType);
-  res.sendFile(file.filePath);
+  res.redirect(302, file.url);
 };
 
 export const listUsers = async (req: Request, res: Response): Promise<void> => {

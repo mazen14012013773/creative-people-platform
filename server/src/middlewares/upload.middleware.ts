@@ -1,8 +1,3 @@
-import { randomUUID } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
-import { unlink } from 'node:fs/promises';
-import path from 'node:path';
-import type { Request } from 'express';
 import multer from 'multer';
 import {
   CHAT_FILE_EXTENSIONS,
@@ -20,32 +15,7 @@ import {
   rejectedFileMessage,
   type MimeExtensionMap,
 } from '../config/upload-rules';
-import { uploadsTempDir } from '../config/paths';
 import { AppError } from '../utils/app-error';
-
-mkdirSync(uploadsTempDir, { recursive: true });
-
-const trackedRequests = new WeakSet<Request>();
-const pendingTempFiles = new WeakMap<Request, string[]>();
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, callback) => callback(null, uploadsTempDir),
-  filename: (req, _file, callback) => {
-    const fileName = `${randomUUID()}.upload`;
-    const fullPath = path.join(uploadsTempDir, fileName);
-    const pending = pendingTempFiles.get(req) ?? [];
-    pending.push(fullPath);
-    pendingTempFiles.set(req, pending);
-    if (req.res && !trackedRequests.has(req)) {
-      trackedRequests.add(req);
-      req.res.once('close', () => {
-        for (const tempPath of pendingTempFiles.get(req) ?? []) void unlink(tempPath).catch(() => undefined);
-        pendingTempFiles.delete(req);
-      });
-    }
-    callback(null, fileName);
-  },
-});
 
 const isAllowed = (map: MimeExtensionMap, mimetype: string): boolean =>
   Object.prototype.hasOwnProperty.call(map, mimetype);
@@ -55,7 +25,7 @@ const rejectFile = (file: Express.Multer.File, allowedLabel: string): AppError =
 
 const makeUploader = (maxFileSize: number, files: number, map: MimeExtensionMap, label: string, extraLimits: { fields?: number; parts?: number } = {}) =>
   multer({
-    storage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: maxFileSize, files, ...extraLimits },
     fileFilter: (_req, file, callback) => {
       if (!isAllowed(map, file.mimetype)) {

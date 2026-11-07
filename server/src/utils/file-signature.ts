@@ -1,4 +1,3 @@
-import { closeSync, openSync, readSync } from 'node:fs';
 
 const HEAD_BYTES = 512;
 
@@ -48,16 +47,5 @@ const matchesSignatureHead = (mimetype: string, bytes: Buffer): boolean => {
   }
 };
 
-const readHead = (filePath: string): Buffer => {
-  const descriptor = openSync(filePath, 'r');
-  try {
-    const bytes = Buffer.allocUnsafe(HEAD_BYTES);
-    const read = readSync(descriptor, bytes, 0, HEAD_BYTES, 0);
-    return bytes.subarray(0, read);
-  } finally {
-    closeSync(descriptor);
-  }
-};
-
-export const matchesFileSignatureFromPath = (filePath: string, mimetype: string): boolean =>
-  matchesSignatureHead(mimetype, readHead(filePath));
+export const matchesFileSignature = (buffer: Buffer, mimetype: string): boolean =>
+  matchesSignatureHead(mimetype, buffer.subarray(0, HEAD_BYTES));

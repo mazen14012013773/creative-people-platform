@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { getClient, query } from '../config/db';
@@ -31,9 +30,7 @@ export const buildBackup = async (): Promise<BackupPayload> => {
   return { meta: { platform: 'mabdeen', version: BACKUP_VERSION, createdAt: new Date().toISOString(), tables: Object.fromEntries(Object.entries(tables).map(([name, rows]) => [name, rows.length])) }, tables };
 };
 export const buildBackupFilename = (date = new Date()): string => `mabdeen-backup-${date.toISOString().slice(0, 10)}.json`;
-const parseBackupFile = (filePath: string): BackupPayload => {
-  let raw: Buffer;
-  try { raw = readFileSync(filePath); } catch { throw new AppError('Unable to read backup file', 400); }
+const parseBackupFile = (raw: Buffer): BackupPayload => {
   if (raw.byteLength > MAX_RESTORE_BYTES) throw new AppError('Backup file exceeds the allowed size', 413);
   let parsed: unknown;
   try { parsed = JSON.parse(raw.toString('utf8')); } catch { throw new AppError('Backup file is not valid JSON', 422); }
@@ -41,8 +38,8 @@ const parseBackupFile = (filePath: string): BackupPayload => {
   return parsed as BackupPayload;
 };
 export interface RestoreResult { restored: Record<string, number>; skippedTables: string[]; droppedColumns: string[] }
-export const restoreBackup = async (adminId: string, filePath: string, reason: string): Promise<RestoreResult> => {
-  const payload = parseBackupFile(filePath);
+export const restoreBackup = async (adminId: string, file: Buffer, reason: string): Promise<RestoreResult> => {
+  const payload = parseBackupFile(file);
   const existing = new Set(await listTables());
   const prepared: Array<{ table: string; rows: Array<Record<string, unknown>>; columns: string[] }> = [];
   const skippedTables: string[] = [];

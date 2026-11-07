@@ -18,7 +18,7 @@ export const getParentChildMessageAttachment = async (req: Request, res: Respons
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.type(file.mimeType);
   res.setHeader('Content-Disposition', /^(image|video)\//i.test(file.mimeType) ? 'inline' : 'attachment');
-  res.sendFile(file.filePath);
+  res.redirect(302, file.url);
 };
 export const startVerification = async (req: Request, res: Response) => res.status(201).json({ success: true, data: await startParentVerification(req.user!.id, req.body.email) });
 export const getVerification = async (req: Request, res: Response) => res.json({ success: true, data: await getPublicParentVerification(String(req.query.token)) });
@@ -30,6 +30,6 @@ export const adminVerificationPhoto = async (req: Request, res: Response) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.type(file.mimeType);
   res.setHeader('Content-Disposition', 'inline');
-  res.sendFile(file.filePath);
+  res.redirect(302, file.url);
 };
 export const reviewVerification = async (req: Request, res: Response) => res.json({ success: true, data: await reviewParentVerificationRequest(String(req.params.id), req.user!.id, req.body.approve, String(req.body.reason || 'Administrative action')) });

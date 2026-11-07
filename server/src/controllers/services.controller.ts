@@ -47,8 +47,7 @@ export const uploadedMedia = async (req: Request, res: Response): Promise<void> 
 export const deleteUploadedMedia = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.id;
   const fileName = String(req.params.filename);
-  const mediaUrl = `/uploads/services/${userId}/${fileName}`;
-  if ((await getMyServices(userId)).some((service) => service.media.some((item) => item.url === mediaUrl))) {
+  if ((await getMyServices(userId)).some((service) => service.media.some((item) => item.url.endsWith(`/${fileName}`)))) {
     throw new AppError('احذف الوسيط من الخدمة واحفظ التعديل قبل حذفه نهائيًا.', 409);
   }
   await deleteUploadedServiceMedia(userId, fileName);

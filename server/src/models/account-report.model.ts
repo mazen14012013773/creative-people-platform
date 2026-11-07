@@ -1,20 +1,18 @@
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { getClient, query } from '../config/db';
-import { privateReportEvidenceDir } from '../config/paths';
+import { uploadPrivateFile, createPrivateFileUrl } from '../services/storage.service';
 import { notifyAdministrators, createUserNotification } from './notification.model';
 import { AppError } from '../utils/app-error';
 import { REPORT_PROOF_EXTENSIONS, REPORT_PROOF_EXTENSIONS_LABEL } from '../config/upload-rules';
-import { matchesFileSignatureFromPath } from '../utils/file-signature';
-import { moveTempFileSync } from '../utils/file-storage';
+import { matchesFileSignature } from '../utils/file-signature';
 import type { z } from 'zod';
 import type { accountReportActionSchema, accountReportQuerySchema, accountReportSchema } from '../validators/account-report.validator';
 
 type CreateInput = z.infer<typeof accountReportSchema>;
 type Query = z.infer<typeof accountReportQuerySchema>;
 type Action = z.infer<typeof accountReportActionSchema>;
-export interface ReportProofInput { path: string; originalname: string; mimetype: string; size: number; }
+export interface ReportProofInput { buffer: Buffer; originalname: string; mimetype: string; size: number; }
 
 const safeName = (name: string) => path.basename(name.replace(/[\\/]/g, '_')).replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 180) || 'evidence';
 
@@ -25,23 +23,20 @@ export const submitAccountReport = async (reporterId: string, input: CreateInput
   if ((await query("SELECT 1 FROM account_reports WHERE reporter_id = $1 AND reported_user_id = $2 AND status = 'PENDING'", [reporterId, target.id])).rowCount) throw new AppError('You already have a pending report for this account.', 409);
 
   const id = randomUUID();
-  const folder = path.join(privateReportEvidenceDir, id);
   const proofs: Array<{ id: string; name: string; mimeType: string; size: number; storageKey: string }> = [];
-  mkdirSync(folder, { recursive: true });
   try {
     for (const file of files) {
       const ext = REPORT_PROOF_EXTENSIONS[file.mimetype] ? `.${REPORT_PROOF_EXTENSIONS[file.mimetype]}` : '';
       if (!ext) throw new AppError(`الملف «${file.originalname}» غير مسموح كدليل. الامتدادات المسموحة: ${REPORT_PROOF_EXTENSIONS_LABEL}.`, 400);
-      if (!matchesFileSignatureFromPath(file.path, file.mimetype)) throw new AppError(`محتوى الملف «${file.originalname}» لا يطابق نوعه المعلن (${file.mimetype}). الامتدادات المسموحة: ${REPORT_PROOF_EXTENSIONS_LABEL}.`, 400);
+      if (!matchesFileSignature(file.buffer, file.mimetype)) throw new AppError(`محتوى الملف «${file.originalname}» لا يطابق نوعه المعلن (${file.mimetype}). الامتدادات المسموحة: ${REPORT_PROOF_EXTENSIONS_LABEL}.`, 400);
       const fileId = randomUUID();
       const storageKey = path.posix.join(id, `${fileId}${ext}`);
-      moveTempFileSync(file.path, path.join(folder, `${fileId}${ext}`), 0o600);
+      await uploadPrivateFile(storageKey, file.buffer, file.mimetype);
       proofs.push({ id: fileId, name: safeName(file.originalname), mimeType: file.mimetype, size: file.size, storageKey });
     }
     await query(`INSERT INTO account_reports (id, reporter_id, reported_user_id, reason_category, description, proof_files)
       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`, [id, reporterId, target.id, input.reasonCategory, input.description, JSON.stringify(proofs)]);
   } catch (error) {
-    rmSync(folder, { recursive: true, force: true });
     throw error;
   }
   await notifyAdministrators('بلاغ جديد عن حساب', `${target.name}: ${input.description.slice(0, 140)}`, '/admin/reports');
@@ -67,9 +62,7 @@ export const getReportEvidence = async (reportId: string, proofId: string) => {
   const proofs = JSON.parse(row.proof_files) as Array<{ id: string; name: string; mimeType: string; storageKey: string }>;
   const proof = proofs.find((item) => item.id === proofId);
   if (!proof) throw new AppError('Evidence not found.', 404);
-  const filePath = path.resolve(privateReportEvidenceDir, proof.storageKey);
-  if (!filePath.startsWith(`${privateReportEvidenceDir}${path.sep}`)) throw new AppError('Invalid evidence path.', 400);
-  return { ...proof, filePath };
+  return { ...proof, url: await createPrivateFileUrl(proof.storageKey) };
 };
 
 export const resolveAccountReport = async (reportId: string, adminId: string, input: Action) => {

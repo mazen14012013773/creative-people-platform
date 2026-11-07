@@ -6,7 +6,7 @@ import { findSupportAttachment, findSupportTicket, insertSupportMessage, insertS
 import { recordAdminAudit } from '../models/admin.model';
 import { emitRealtimeEvent } from './realtime.service';
 import { createUserNotification } from '../models/notification.model';
-import { deleteChatAttachment, resolveChatAttachmentPath, saveChatAttachment } from './upload.service';
+import { deleteChatAttachment, getPrivateFileUrl, saveChatAttachment } from './upload.service';
 import { AppError } from '../utils/app-error';
 import { buildPagination } from '../utils/pagination';
 import { sanitizePlainText } from '../utils/sanitize';
@@ -118,7 +118,6 @@ export const getSupportMessageAttachment = async (requesterId: string, ticketId:
   const sender = await getSender(requesterId);
   const attachment = await findSupportAttachment(ticketId, messageId);
   if (!attachment || (sender.type !== 'ADMIN' && attachment.userId !== requesterId)) throw new AppError('الملف غير موجود أو لا تملك صلاحية عرضه.', 404);
-  const filePath = resolveChatAttachmentPath(attachment.storageKey);
-  if (!existsSync(filePath)) throw new AppError('الملف المرفق لم يعد متاحاً.', 404);
-  return { ...attachment, filePath };
+  const url = await getPrivateFileUrl(attachment.storageKey, attachment.name);
+  return { ...attachment, url };
 };
