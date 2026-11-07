@@ -1,8 +1,9 @@
 export type ServiceStatus = 'active' | 'inactive';
 export type ServiceMediaType = 'image' | 'video' | 'link';
 export interface ServiceMedia { url: string; type: ServiceMediaType; }
-export interface ServiceMediaInput { url?: string; type: ServiceMediaType; }
+export interface ServiceMediaInput { url?: string; type?: ServiceMediaType; }
 export interface ServiceSource { title: string; url: string; }
+export interface ServiceSourceInput { title?: string; url?: string; }
 
 export interface Service {
   id: string;
@@ -30,5 +31,5 @@ export interface ServiceDraft {
   price?: number;
   status?: ServiceStatus;
   media?: ServiceMediaInput[];
-  sources?: ServiceSource[];
+  sources?: ServiceSourceInput[];
 }
