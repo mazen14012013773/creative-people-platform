@@ -11,7 +11,7 @@ const getStorage = (isPrivate = false) => {
   storageClient ??= createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  return storageClient.storage.from(isPrivate ? env.SUPABASE_PRIVATE_STORAGE_BUCKET : env.SUPABASE_STORAGE_BUCKET);
+  return storageClient.storage.from(isPrivate ? env.SUPABASE_PRIVATE_STORAGE_BUCKET : env.SUPABASE_PUBLIC_STORAGE_BUCKET);
 };
 
 const normalizeKey = (key: string): string => {

@@ -12,7 +12,7 @@ import type { CommunityPostInput, CommunityPostUpdateInput } from '../validators
 import { env } from '../config/env';
 
 const isOwnedCommunityImage = (url: string, userId: string): boolean => {
-  try { return new URL(url).pathname.includes(`/storage/v1/object/public/${env.SUPABASE_STORAGE_BUCKET}/community/${userId}/`); }
+  try { return new URL(url).pathname.includes(`/storage/v1/object/public/${env.SUPABASE_PUBLIC_STORAGE_BUCKET}/community/${userId}/`); }
   catch { return false; }
 };
 
